@@ -25,3 +25,6 @@ Aplikacija se pokreće na http://127.0.0.1:8000
 - **Products** — proizvodi sa cenom (decimal), lagerom i statusom aktivnosti.
 - CRUD za oba modula kroz controller + Blade stranice, sa server-side validacijom.
 - Demo podaci se generišu preko `php artisan migrate:fresh --seed` (30 kupaca, 20 proizvoda).
+
+## Kako je projekat pokrenut
+Projekat je napravljen komandom `composer create-project laravel/laravel`. Baza je SQLite. Posle clone-a pokreće se: composer install, kopiranje .env, php artisan key:generate, php artisan migrate, npm install, npm run dev, php artisan serve.
