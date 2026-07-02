@@ -19,3 +19,9 @@ Interni trening projekat — Laravel aplikacija za vođenje kupaca, proizvoda, p
 8. `php artisan serve`
 
 Aplikacija se pokreće na http://127.0.0.1:8000
+
+## Struktura (Faza 1)
+- **Customers** — kupci mogu biti fizička lica ili firme (jedna tabela, polje `type`). Firme imaju naziv firme i PIB.
+- **Products** — proizvodi sa cenom (decimal), lagerom i statusom aktivnosti.
+- CRUD za oba modula kroz controller + Blade stranice, sa server-side validacijom.
+- Demo podaci se generišu preko `php artisan migrate:fresh --seed` (30 kupaca, 20 proizvoda).
