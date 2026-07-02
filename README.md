@@ -20,3 +20,5 @@ Interni trening projekat — Laravel aplikacija za vođenje kupaca, proizvoda, p
 9. `php artisan serve`
 
 Aplikacija se pokreće na http://127.0.0.1:8000
+## Kako je projekat pokrenut
+Projekat je napravljen komandom `composer create-project laravel/laravel`. Baza je MySQL kroz XAMPP. Posle clone-a pokreće se: composer install, kopiranje .env, php artisan key:generate, php artisan migrate, npm install, npm run dev, php artisan serve.
