@@ -32,7 +32,8 @@
                         <td>{{ $product->is_active ? 'Aktivan' : 'Neaktivan' }}</td>
                         <td class="actions">
                             <a class="btn btn-secondary" href="{{ route('products.edit', $product) }}">Izmeni</a>
-                            <form method="POST" action="{{ route('products.destroy', $product) }}" onsubmit="return confirm('Obrisati proizvod?')">
+                            <form method="POST" action="{{ route('products.destroy', $product) }}"
+                                onsubmit="return confirm('Obrisati proizvod?')">
                                 @csrf
                                 @method('DELETE')
                                 <button class="btn btn-danger" type="submit">Obriši</button>
@@ -44,7 +45,7 @@
         </table>
 
         <div style="margin-top:16px;">
-            {{ $products->links() }}
+            {{ $products->onEachSide(1)->links('vendor.pagination.default') }}
         </div>
     @else
         <div class="card">Nema proizvoda. Dodaj prvi klikom na "Novi proizvod".</div>

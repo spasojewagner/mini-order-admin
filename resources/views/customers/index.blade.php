@@ -32,7 +32,8 @@
                         <td>{{ $customer->phone ?? '-' }}</td>
                         <td class="actions">
                             <a class="btn btn-secondary" href="{{ route('customers.edit', $customer) }}">Izmeni</a>
-                            <form method="POST" action="{{ route('customers.destroy', $customer) }}" onsubmit="return confirm('Obrisati kupca?')">
+                            <form method="POST" action="{{ route('customers.destroy', $customer) }}"
+                                onsubmit="return confirm('Obrisati kupca?')">
                                 @csrf
                                 @method('DELETE')
                                 <button class="btn btn-danger" type="submit">Obriši</button>
@@ -44,7 +45,7 @@
         </table>
 
         <div style="margin-top:16px;">
-            {{ $customers->links() }}
+            {{ $customers->onEachSide(1)->links('vendor.pagination.default') }}
         </div>
     @else
         <div class="card">Nema kupaca. Dodaj prvog klikom na "Novi kupac".</div>
