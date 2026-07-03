@@ -5,20 +5,26 @@ Interni trening projekat — Laravel aplikacija za vođenje kupaca, proizvoda, p
 ## Requirements
 - PHP 8.2+
 - Composer
-- MySQL (npr. kroz XAMPP)
+- SQLite
 - Node.js / NPM
 
 ## Installation
 1. `composer install`
 2. `cp .env.example .env`
-3. Podesi DB podatke u `.env` (DB_DATABASE, DB_USERNAME, DB_PASSWORD)
-4. Napravi praznu bazu `mini_order_admin` u MySQL-u
-5. `php artisan key:generate`
-6. `php artisan migrate`
-7. `npm install`
-8. `npm run dev`
-9. `php artisan serve`
+3. Baza je SQLite — ništa se ne podešava ručno
+4. `php artisan key:generate`
+5. `php artisan migrate`
+6. `npm install`
+7. `npm run dev`
+8. `php artisan serve`
 
 Aplikacija se pokreće na http://127.0.0.1:8000
+
+## Struktura (Faza 1)
+- **Customers** — kupci mogu biti fizička lica ili firme (jedna tabela, polje `type`). Firme imaju naziv firme i PIB.
+- **Products** — proizvodi sa cenom (decimal), lagerom i statusom aktivnosti.
+- CRUD za oba modula kroz controller + Blade stranice, sa server-side validacijom.
+- Demo podaci se generišu preko `php artisan migrate:fresh --seed` (30 kupaca, 20 proizvoda).
+
 ## Kako je projekat pokrenut
-Projekat je napravljen komandom `composer create-project laravel/laravel`. Baza je MySQL kroz XAMPP. Posle clone-a pokreće se: composer install, kopiranje .env, php artisan key:generate, php artisan migrate, npm install, npm run dev, php artisan serve.
+Projekat je napravljen komandom `composer create-project laravel/laravel`. Baza je SQLite. Posle clone-a pokreće se: composer install, kopiranje .env, php artisan key:generate, php artisan migrate, npm install, npm run dev, php artisan serve.
