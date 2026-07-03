@@ -18,4 +18,9 @@ class Customer extends Model
         'phone',
         'address',
     ];
+    // Kupac ima više porudžbina
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 }
