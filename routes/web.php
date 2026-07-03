@@ -15,3 +15,4 @@ Route::post('orders/{order}/confirm', [OrderController::class, 'confirm'])->name
 Route::get('customers-search', function () {
     return view('customers.search');
 })->name('customers.search');
+Route::get('products-filters', fn() => view('products.filters'))->name('products.filters');
