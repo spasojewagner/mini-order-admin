@@ -12,3 +12,6 @@ Route::resource('products', ProductController::class);
 Route::resource('orders', OrderController::class)->only(['index', 'create', 'store', 'show']);
 Route::resource('orders', OrderController::class)->only(['index', 'create', 'store', 'show']);
 Route::post('orders/{order}/confirm', [OrderController::class, 'confirm'])->name('orders.confirm');
+Route::get('customers-search', function () {
+    return view('customers.search');
+})->name('customers.search');
