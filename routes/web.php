@@ -10,3 +10,5 @@ Route::get('/', function () {
 Route::resource('customers', CustomerController::class);
 Route::resource('products', ProductController::class);
 Route::resource('orders', OrderController::class)->only(['index', 'create', 'store', 'show']);
+Route::resource('orders', OrderController::class)->only(['index', 'create', 'store', 'show']);
+Route::post('orders/{order}/confirm', [OrderController::class, 'confirm'])->name('orders.confirm');
