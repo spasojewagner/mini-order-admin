@@ -43,7 +43,8 @@ class OrderForm extends Component
     public function addProduct($productId)
     {
         $product = Product::find($productId);
-        if (! $product) return;
+        if (!$product)
+            return;
 
         // Ako proizvod već postoji u stavkama — samo povećaj količinu
         foreach ($this->items as $index => $item) {
@@ -60,6 +61,7 @@ class OrderForm extends Component
             'name' => $product->name,
             'price' => (float) $product->price,
             'quantity' => 1,
+            'stock' => (int) $product->stock_quantity,
         ];
 
         $this->productSearch = '';
@@ -97,6 +99,15 @@ class OrderForm extends Component
     {
         $this->validate();
 
+        // Server-side provera lagera — sveže iz baze, ne veruje se fronту
+        foreach ($this->items as $item) {
+            $product = Product::find($item['product_id']);
+            if (!$product || $product->stock_quantity < (int) $item['quantity']) {
+                $this->addError('stock', "Nedovoljno lagera za '{$item['name']}'. Dostupno: " . ($product->stock_quantity ?? 0) . ", traženo: {$item['quantity']}.");
+                return;
+            }
+        }
+
         DB::transaction(function () {
             $order = Order::create([
                 'customer_id' => $this->customerId,
@@ -127,7 +138,16 @@ class OrderForm extends Component
         session()->flash('success', 'Porudžbina je uspešno kreirana.');
         return redirect()->route('orders.index');
     }
-
+    // Da li ima stavki gde je količina veća od lagera
+    public function getHasStockIssuesProperty()
+    {
+        foreach ($this->items as $item) {
+            if ((int) $item['quantity'] > (int) $item['stock']) {
+                return true;
+            }
+        }
+        return false;
+    }
     public function render()
     {
         $customers = Customer::orderBy('name')->get();
