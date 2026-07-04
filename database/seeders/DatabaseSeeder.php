@@ -18,9 +18,6 @@ class DatabaseSeeder extends Seeder
         \App\Models\Customer::factory(30)->create();
         \App\Models\Product::factory(20)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $this->call(OrderSeeder::class);
     }
 }

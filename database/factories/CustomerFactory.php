@@ -15,18 +15,18 @@ class CustomerFactory extends Factory
      *
      * @return array<string, mixed>
      */
-   public function definition(): array
-{
-    $isCompany = fake()->boolean(30);
+    public function definition(): array
+    {
+        $isCompany = fake()->boolean(30);
 
-    return [
-        'type' => $isCompany ? 'company' : 'individual',
-        'name' => fake()->name(),
-        'company_name' => $isCompany ? fake()->company() : null,
-        'tax_id' => $isCompany ? fake()->numerify('#########') : null,
-        'email' => fake()->unique()->safeEmail(),
-        'phone' => fake()->phoneNumber(),
-        'address' => fake()->address(),
-    ];
-}
+        return [
+            'type' => $isCompany ? 'company' : 'individual',
+            'name' => fake()->name(),
+            'company_name' => $isCompany ? fake()->company() : null,
+            'tax_id' => $isCompany ? fake()->numerify('#########') : null,
+            'email' => fake()->unique()->safeEmail(),
+            'phone' => fake()->phoneNumber(),
+            'address' => fake()->address(),
+        ];
+    }
 }
