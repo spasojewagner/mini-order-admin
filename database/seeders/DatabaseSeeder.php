@@ -19,5 +19,6 @@ class DatabaseSeeder extends Seeder
         \App\Models\Product::factory(20)->create();
 
         $this->call(OrderSeeder::class);
+        $this->call(ConversationSeeder::class);
     }
 }
