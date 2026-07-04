@@ -108,32 +108,8 @@ class OrderForm extends Component
             }
         }
 
-        DB::transaction(function () {
-            $order = Order::create([
-                'customer_id' => $this->customerId,
-                'status' => 'draft',
-                'total_amount' => 0,
-                'note' => $this->note ?: null,
-            ]);
-
-            $total = 0;
-            foreach ($this->items as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                $subtotal = $product->price * (int) $item['quantity'];
-
-                $order->items()->create([
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'unit_price' => $product->price,
-                    'quantity' => (int) $item['quantity'],
-                    'subtotal' => $subtotal,
-                ]);
-
-                $total += $subtotal;
-            }
-
-            $order->update(['total_amount' => $total]);
-        });
+       app(\App\Services\OrderCreationService::class)
+            ->create($this->customerId, $this->items, $this->note);
 
         session()->flash('success', 'Porudžbina je uspešno kreirana.');
         return redirect()->route('orders.index');
