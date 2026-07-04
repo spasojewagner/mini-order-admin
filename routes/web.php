@@ -20,3 +20,4 @@ Route::get('orders-create', fn() => view('orders.create-livewire'))->name('order
 Route::get('orders-board', fn() => view('orders.board'))->name('orders.board');
 Route::get('products-inline', fn() => view('products.inline'))->name('products.inline');
 Route::get('customers-import', fn() => view('customers.import'))->name('customers.import');
+Route::get('dashboard', fn() => view('dashboard'))->name('dashboard');
