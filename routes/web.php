@@ -17,3 +17,4 @@ Route::get('customers-search', function () {
 })->name('customers.search');
 Route::get('products-filters', fn() => view('products.filters'))->name('products.filters');
 Route::get('orders-create', fn() => view('orders.create-livewire'))->name('orders.create-livewire');
+Route::get('orders-board', fn() => view('orders.board'))->name('orders.board');
