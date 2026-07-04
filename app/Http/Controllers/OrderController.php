@@ -7,7 +7,7 @@ use App\Models\Customer;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
+use App\Services\OrderConfirmationService;
 class OrderController extends Controller
 {
     public function index()
@@ -74,5 +74,18 @@ class OrderController extends Controller
         $order->load('customer', 'items');
 
         return view('orders.show', compact('order'));
+    }
+    // Potvrda porudžbine — poziva Service klasu
+    public function confirm(Order $order, OrderConfirmationService $service)
+    {
+        try {
+            $service->confirm($order);
+
+            return redirect()->route('orders.show', $order)
+                ->with('success', 'Porudžbina je potvrđena i lager je ažuriran.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->route('orders.show', $order)
+                ->with('error', collect($e->errors())->flatten()->first());
+        }
     }
 }
