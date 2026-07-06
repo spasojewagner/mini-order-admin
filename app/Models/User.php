@@ -52,13 +52,12 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
-    public function isAgent(): bool
+    public function isSales(): bool
     {
-        return $this->role === 'agent';
+        return $this->role === 'sales';
     }
 
-    public function isViewer(): bool
+    public function isWarehouse(): bool
     {
-        return $this->role === 'viewer';
-    }
-}
+        return $this->role === 'warehouse';
+    }}

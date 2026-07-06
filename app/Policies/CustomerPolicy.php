@@ -10,26 +10,24 @@ class CustomerPolicy
     // Svi ulogovani vide listu i pojedinačni zapis
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isAdmin() || $user->isSales();
     }
 
     public function view(User $user, Customer $customer): bool
     {
-        return true;
+        return $user->isAdmin() || $user->isSales();
     }
 
-    // Kreiranje i izmena — admin i agent
     public function create(User $user): bool
     {
-        return $user->isAdmin() || $user->isAgent();
+        return $user->isAdmin() || $user->isSales();
     }
 
     public function update(User $user, Customer $customer): bool
     {
-        return $user->isAdmin() || $user->isAgent();
+        return $user->isAdmin() || $user->isSales();
     }
 
-    // Brisanje — samo admin
     public function delete(User $user, Customer $customer): bool
     {
         return $user->isAdmin();
