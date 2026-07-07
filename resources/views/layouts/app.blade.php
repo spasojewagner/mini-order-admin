@@ -150,6 +150,7 @@
             color: #9ca3af;
         }
     </style>
+    @livewireStyles
 </head>
 
 <body>
@@ -159,6 +160,7 @@
         @endif
         @yield('content')
     </div>
+    @livewireScripts
 </body>
 
 </html>
