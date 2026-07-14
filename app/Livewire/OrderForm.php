@@ -4,9 +4,9 @@ namespace App\Livewire;
 
 use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Order;
+
 use Livewire\Component;
-use Illuminate\Support\Facades\DB;
+
 
 class OrderForm extends Component
 {
