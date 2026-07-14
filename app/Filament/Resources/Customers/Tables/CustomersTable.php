@@ -8,7 +8,8 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-
+use Filament\Actions\ImportAction;
+use App\Filament\Imports\CustomerImporter;
 class CustomersTable
 {
     public static function configure(Table $table): Table
@@ -17,7 +18,7 @@ class CustomersTable
             ->columns([
                 TextColumn::make('type')
                     ->label('Tip')
-                    ->formatStateUsing(fn ($state) => $state === 'company' ? 'Firma' : 'Fizičko lice')
+                    ->formatStateUsing(fn($state) => $state === 'company' ? 'Firma' : 'Fizičko lice')
                     ->badge(),
 
                 TextColumn::make('name')
@@ -52,6 +53,11 @@ class CustomersTable
                         'individual' => 'Fizičko lice',
                         'company' => 'Firma',
                     ]),
+            ])
+            ->headerActions([
+                ImportAction::make()
+                    ->importer(CustomerImporter::class)
+                    ->label('Uvezi kupce'),
             ])
             ->recordActions([
                 EditAction::make(),
