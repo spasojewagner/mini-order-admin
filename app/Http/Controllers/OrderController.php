@@ -6,8 +6,9 @@ use App\Models\Order;
 use App\Models\Customer;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Services\OrderConfirmationService;
+use App\Services\OrderCreationService;
+
 class OrderController extends Controller
 {
     public function index()
@@ -27,7 +28,7 @@ class OrderController extends Controller
         return view('orders.create', compact('customers', 'products'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, OrderCreationService $service)
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
@@ -37,33 +38,7 @@ class OrderController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
         ]);
 
-        DB::transaction(function () use ($validated) {
-            $order = Order::create([
-                'customer_id' => $validated['customer_id'],
-                'status' => 'draft',
-                'total_amount' => 0,
-                'note' => $validated['note'] ?? null,
-            ]);
-
-            $total = 0;
-
-            foreach ($validated['items'] as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                $subtotal = $product->price * $item['quantity'];
-
-                $order->items()->create([
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'unit_price' => $product->price,
-                    'quantity' => $item['quantity'],
-                    'subtotal' => $subtotal,
-                ]);
-
-                $total += $subtotal;
-            }
-
-            $order->update(['total_amount' => $total]);
-        });
+        $service->create($validated['customer_id'], $validated['items'], $validated['note'] ?? null);
 
         return redirect()->route('orders.index')
             ->with('success', 'Porudžbina je uspešno kreirana.');
@@ -75,6 +50,7 @@ class OrderController extends Controller
 
         return view('orders.show', compact('order'));
     }
+
     // Potvrda porudžbine — poziva Service klasu
     public function confirm(Order $order, OrderConfirmationService $service)
     {

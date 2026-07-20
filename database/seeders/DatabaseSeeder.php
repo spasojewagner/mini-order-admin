@@ -2,7 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
+use App\Models\Customer;
+use App\Models\Product;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,8 +16,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\Customer::factory(30)->create();
-        \App\Models\Product::factory(20)->create();
+        // Test nalozi (admin, sales, warehouse) — prvo, da postoje pre ostalog
+        $this->call(UserSeeder::class);
+
+        // Demo podaci
+        Customer::factory(30)->create();
+        Product::factory(20)->create();
 
         $this->call(OrderSeeder::class);
         $this->call(ConversationSeeder::class);
