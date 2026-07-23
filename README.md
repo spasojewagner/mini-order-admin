@@ -10,6 +10,7 @@ Interni trening projekat — Laravel aplikacija za vođenje kupaca, proizvoda, p
 - SQLite (baza)
 - Blade
 - PHPUnit (testovi)
+- Inertia.js + React (korisnička strana)
 
 ## Requirements
 - PHP 8.2+
@@ -23,8 +24,8 @@ Interni trening projekat — Laravel aplikacija za vođenje kupaca, proizvoda, p
 3. `php artisan key:generate`
 4. `php artisan migrate --seed` (kreira tabele i puni demo podatke)
 5. `npm install`
-6. `npm run dev`
-7. `php artisan serve`
+6. `npm run dev` (obavezno — Vite servira React deo)
+7. `php artisan serve` (u drugom terminalu)
 
 Aplikacija se pokreće na http://127.0.0.1:8000
 Admin panel je na http://127.0.0.1:8000/admin
@@ -57,6 +58,12 @@ Produkcijski admin panel na `/admin`: resursi za kupce, proizvode, porudžbine i
 - ERP sinhronizacija: `php artisan app:sync-products` (čita `storage/app/erp-products.json`, kreira/ažurira proizvode po `external_id`, bez duplikata)
 - AI draft flow: u Filament konverzacijama dugme "Generate draft reply" pravi predlog odgovora (statički za sad), koji čovek pregleda i odobrava pre slanja
 - Filament import kupaca iz CSV-a sa validacijom i izveštajem o greškama
+
+**Faza 6 — Inertia + React (korisnička strana)**
+Instaliran Laravel Breeze sa Inertia i React (`resources/js/`). Inertia povezuje Laravel backend sa React frontendom bez zasebnog API-ja: controller vraća `Inertia::render('Stranica', [podaci])`, a React komponenta te podatke dobija kao props. Auth (registracija, prijava, profil) su React stranice.
+
+Napomena: Breeze podrazumevano koristi `/dashboard`, ali ta ruta je već zauzeta Livewire dashboard-om (Faza 2), pa je Breeze stranica premeštena na `/account` — postojeći ekrani su ostali netaknuti.
+
 ## Rute (mapa aplikacije)
 
 ### Klasični Laravel — Faza 1 (controller + Blade)
@@ -101,6 +108,14 @@ Produkcijski admin panel na `/admin`: resursi za kupce, proizvode, porudžbine i
 |---------|------|
 | `php artisan app:sync-products` | ERP sinhronizacija proizvoda iz JSON-a |
 
+### Inertia + React — Faza 6
+| Ruta | Opis |
+|------|------|
+| `/register` | registracija (React) |
+| `/login` | prijava (React) |
+| `/account` | korisnički nalog (React) |
+| `/profile` | izmena profila (React) |
+
 ### Gde je poslovna logika
 Poslovna logika je izdvojena iz UI slojeva (controller / Livewire / Filament) u zasebne klase, da bi bila na jednom mestu i da je svi slojevi mogu koristiti:
 
@@ -141,6 +156,10 @@ database/
   factories/                  generisanje demo kupaca i proizvoda
 resources/
   views/                      Blade stranice (Faza 1) i Livewire šabloni (Faza 2)
+  js/                         React komponente kroz Inertia (Faza 6)
+    Pages/                    Inertia stranice (Auth, Dashboard)
+    Layouts/                  React layout-i
+    Components/               React komponente
 routes/
   web.php                     rute grupisane po fazama
 storage/app/
