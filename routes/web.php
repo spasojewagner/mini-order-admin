@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ShopController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -42,3 +43,6 @@ Route::middleware('auth')->group(function () {
 require __DIR__ . '/auth.php';
 
 // Napomena: Filament admin panel je na /admin (AdminPanelProvider), ne ovde.
+// --- Faza 6: prodavnica (Inertia + React, korisnička strana) ---
+Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
+Route::get('/shop/{product}', [ShopController::class, 'show'])->name('shop.show');
