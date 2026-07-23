@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import ShopLayout from '@/Layouts/ShopLayout';
 
 const STATUS_LABELS = {
     draft: 'U pripremi',
@@ -11,15 +12,10 @@ const STATUS_LABELS = {
 
 export default function MyOrders({ orders }) {
     return (
-        <>
+        <ShopLayout>
             <Head title="Moje porudžbine" />
 
             <div className="max-w-4xl mx-auto p-6">
-                <div className="flex items-center justify-between">
-                    <Link href={route('shop.index')} className="text-sm text-blue-600 hover:underline">
-                        ← Prodavnica
-                    </Link>
-                </div>
 
                 <h1 className="mt-4 mb-6 text-2xl font-bold text-gray-900">Moje porudžbine</h1>
 
@@ -67,6 +63,6 @@ export default function MyOrders({ orders }) {
                     </div>
                 )}
             </div>
-        </>
+        </ShopLayout>
     );
 }

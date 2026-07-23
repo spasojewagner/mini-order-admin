@@ -1,7 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
+import ShopLayout from '@/Layouts/ShopLayout';
 
 export default function Cart({ items, total }) {
-    // Promena količine
     function updateQuantity(productId, quantity) {
         if (quantity < 1) return;
         router.patch(route('cart.update', productId), { quantity }, {
@@ -9,7 +9,6 @@ export default function Cart({ items, total }) {
         });
     }
 
-    // Uklanjanje stavke
     function removeItem(productId) {
         router.delete(route('cart.remove', productId), {
             preserveScroll: true,
@@ -17,7 +16,7 @@ export default function Cart({ items, total }) {
     }
 
     return (
-        <>
+        <ShopLayout>
             <Head title="Korpa" />
 
             <div className="max-w-4xl mx-auto p-6">
@@ -100,6 +99,6 @@ export default function Cart({ items, total }) {
                     </>
                 )}
             </div>
-        </>
+        </ShopLayout>
     );
 }

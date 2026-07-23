@@ -1,5 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 
+import ShopLayout from '@/Layouts/ShopLayout';
+
 export default function Checkout({ items, total }) {
     const { data, setData, post, processing, errors } = useForm({
         note: '',
@@ -11,7 +13,7 @@ export default function Checkout({ items, total }) {
     }
 
     return (
-        <>
+        <ShopLayout>
             <Head title="Poručivanje" />
 
             <div className="max-w-3xl mx-auto p-6">
@@ -79,6 +81,6 @@ export default function Checkout({ items, total }) {
                     </>
                 )}
             </div>
-        </>
+        </ShopLayout>
     );
 }

@@ -1,4 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import ShopLayout from '@/Layouts/ShopLayout';
 
 export default function Show({ product }) {
     const { data, setData, post, processing } = useForm({
@@ -11,18 +12,13 @@ export default function Show({ product }) {
     }
 
     return (
-        <>
+        <ShopLayout>
             <Head title={product.name} />
 
             <div className="max-w-3xl mx-auto p-6">
-                <div className="flex items-center justify-between">
-                    <Link href={route('shop.index')} className="text-sm text-blue-600 hover:underline">
-                        ← Nazad na prodavnicu
-                    </Link>
-                    <Link href={route('cart.index')} className="text-sm text-blue-600 hover:underline">
-                        Korpa
-                    </Link>
-                </div>
+                <Link href={route('shop.index')} className="text-sm text-blue-600 hover:underline">
+                    ← Nazad na prodavnicu
+                </Link>
 
                 <div className="mt-4 rounded-lg bg-white p-6 shadow">
                     <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
@@ -66,6 +62,6 @@ export default function Show({ product }) {
                     )}
                 </div>
             </div>
-        </>
+        </ShopLayout>
     );
 }

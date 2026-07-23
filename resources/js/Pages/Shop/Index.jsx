@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import ShopLayout from '@/Layouts/ShopLayout';
 
 export default function Index({ products, filters }) {
     const [search, setSearch] = useState(filters.search || '');
@@ -14,21 +15,11 @@ export default function Index({ products, filters }) {
     }
 
     return (
-        <>
+        <ShopLayout>
             <Head title="Prodavnica" />
 
             <div className="max-w-6xl mx-auto p-6">
-                <div className="flex items-center justify-between mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">Prodavnica</h1>
-                    <div className="flex gap-4">
-                        <Link href={route('cart.index')} className="text-sm text-blue-600 hover:underline">
-                            Korpa
-                        </Link>
-                        <Link href={route('account')} className="text-sm text-blue-600 hover:underline">
-                            Moj nalog
-                        </Link>
-                    </div>
-                </div>
+             <h1 className="mb-6 text-2xl font-bold text-gray-900">Proizvodi</h1>
 
                 <form onSubmit={handleSearch} className="mb-6 flex gap-2">
                     <input
@@ -99,6 +90,8 @@ export default function Index({ products, filters }) {
                     </div>
                 )}
             </div>
-        </>
+        
+       </ShopLayout>
     );
+     
 }

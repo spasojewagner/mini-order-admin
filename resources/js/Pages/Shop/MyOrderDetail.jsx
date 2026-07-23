@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import ShopLayout from '@/Layouts/ShopLayout';
 
 const STATUS_LABELS = {
     draft: 'U pripremi',
