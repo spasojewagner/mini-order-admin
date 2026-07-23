@@ -20,12 +20,14 @@ export default function Index({ products, filters }) {
             <div className="max-w-6xl mx-auto p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h1 className="text-2xl font-bold text-gray-900">Prodavnica</h1>
-                    <Link
-                        href={route('account')}
-                        className="text-sm text-blue-600 hover:underline"
-                    >
-                        Moj nalog
-                    </Link>
+                    <div className="flex gap-4">
+                        <Link href={route('cart.index')} className="text-sm text-blue-600 hover:underline">
+                            Korpa
+                        </Link>
+                        <Link href={route('account')} className="text-sm text-blue-600 hover:underline">
+                            Moj nalog
+                        </Link>
+                    </div>
                 </div>
 
                 <form onSubmit={handleSearch} className="mb-6 flex gap-2">
