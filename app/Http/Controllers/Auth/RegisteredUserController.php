@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Customer;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,10 +38,19 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        // Registracija pravi i Customer zapis — porudžbine se vezuju za kupca, ne za nalog
+        $customer = Customer::create([
+            'type' => 'individual',
+            'name' => $request->name,
+            'email' => $request->email,
+        ]);
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'role' => 'customer',
+            'customer_id' => $customer->id,
         ]);
 
         event(new Registered($user));
