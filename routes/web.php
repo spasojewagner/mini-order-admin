@@ -1,9 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ProfileController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -25,4 +27,18 @@ Route::view('customers-import', 'customers.import')->name('customers.import');
 Route::view('dashboard', 'dashboard')->name('dashboard');
 Route::view('conversations', 'conversations')->name('conversations');
 
-// Napomena: Filament admin panel je na /admin (definisan u AdminPanelProvider), ne ovde.
+// --- Faza 6: Inertia + React (korisnička strana) ---
+Route::get('/account', function () {
+    return Inertia::render('Dashboard');
+})->middleware(['auth', 'verified'])->name('account');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// Breeze auth rute (login, register, reset lozinke)
+require __DIR__ . '/auth.php';
+
+// Napomena: Filament admin panel je na /admin (AdminPanelProvider), ne ovde.
