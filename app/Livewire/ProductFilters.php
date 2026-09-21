@@ -12,15 +12,30 @@ class ProductFilters extends Component
 
     // Stanje — svaki filter je svoj property
     public $search = '';
+
     public $status = '';        // '', 'active', 'inactive'
+
     public $inStock = false;    // true = samo proizvodi na lageru
+
     public $sortField = 'name'; // po čemu sortiramo
+
     public $sortDirection = 'asc'; // asc ili desc
 
     // Kad se bilo koji filter promeni, vrati na prvu stranu
-    public function updatingSearch() { $this->resetPage(); }
-    public function updatingStatus() { $this->resetPage(); }
-    public function updatingInStock() { $this->resetPage(); }
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingInStock()
+    {
+        $this->resetPage();
+    }
 
     // Sortiranje: klik na kolonu menja polje/smer
     public function sortBy($field)
@@ -47,12 +62,17 @@ class ProductFilters extends Component
     {
         $products = Product::query()
             ->when($this->search, function ($query) {
-                $query->where('name', 'like', "%{$this->search}%")
-                    ->orWhere('sku', 'like', "%{$this->search}%");
+                // Zagrada je obavezna. Bez nje SQL veze AND jace od OR, pa
+                // uslov postaje: name LIKE x OR (sku LIKE x AND is_active = 1)
+                // i filter statusa otpada za deo rezultata.
+                $query->where(function ($q) {
+                    $q->where('name', 'like', "%{$this->search}%")
+                        ->orWhere('sku', 'like', "%{$this->search}%");
+                });
             })
-            ->when($this->status === 'active', fn($q) => $q->where('is_active', true))
-            ->when($this->status === 'inactive', fn($q) => $q->where('is_active', false))
-            ->when($this->inStock, fn($q) => $q->where('stock_quantity', '>', 0))
+            ->when($this->status === 'active', fn ($q) => $q->where('is_active', true))
+            ->when($this->status === 'inactive', fn ($q) => $q->where('is_active', false))
+            ->when($this->inStock, fn ($q) => $q->where('stock_quantity', '>', 0))
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate(10);
 
