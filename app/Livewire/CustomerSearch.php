@@ -23,10 +23,12 @@ class CustomerSearch extends Component
     {
         $customers = Customer::query()
             ->when($this->search, function ($query) {
-                $query->where('name', 'like', "%{$this->search}%")
-                    ->orWhere('company_name', 'like', "%{$this->search}%")
-                    ->orWhere('email', 'like', "%{$this->search}%")
-                    ->orWhere('phone', 'like', "%{$this->search}%");
+                $query->where(function ($q) {
+                    $q->where('name', 'like', "%{$this->search}%")
+                        ->orWhere('company_name', 'like', "%{$this->search}%")
+                        ->orWhere('email', 'like', "%{$this->search}%")
+                        ->orWhere('phone', 'like', "%{$this->search}%");
+                });
             })
             ->latest()
             ->paginate(10);
