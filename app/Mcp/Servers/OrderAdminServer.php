@@ -2,6 +2,8 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\ConfirmOrderTool;
+use App\Mcp\Tools\CreateOrderTool;
 use App\Mcp\Tools\ListOrdersTool;
 use App\Mcp\Tools\ListProductsTool;
 use App\Mcp\Tools\LowStockProductsTool;
@@ -21,6 +23,8 @@ class OrderAdminServer extends Server
         SearchCustomersTool::class,
         ListOrdersTool::class,
         LowStockProductsTool::class,
+        CreateOrderTool::class,
+        ConfirmOrderTool::class,
     ];
 
     protected array $resources = [
