@@ -12,9 +12,14 @@ class OrderAlertMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    /**
+     * @param  array<int, array{id: int, customer: string, amount: float}>  $orders
+     */
     public function __construct(
         public string $subjectLine,
-        public string $body,
+        public string $summary,
+        public array $orders,
+        public ?string $recommendation = null,
     ) {}
 
     public function envelope(): Envelope

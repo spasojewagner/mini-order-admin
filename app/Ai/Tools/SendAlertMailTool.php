@@ -28,15 +28,23 @@ class SendAlertMailTool implements Tool
         try {
             $validated = $request->validate([
                 'subject' => ['required', 'string', 'max:150'],
-                'body' => ['required', 'string', 'max:4000'],
+                'summary' => ['required', 'string', 'max:500'],
+                'orders' => ['required', 'array', 'min:1', 'max:20'],
+                'orders.*.id' => ['required', 'integer'],
+                'orders.*.customer' => ['required', 'string', 'max:150'],
+                'orders.*.amount' => ['required', 'numeric'],
+                'recommendation' => ['nullable', 'string', 'max:500'],
             ]);
         } catch (ValidationException $e) {
-            // Gresku vracamo kao tekst da je model procita i ispravi,
-            // umesto da cela komanda pukne.
             return 'Neispravni argumenti: '.collect($e->errors())->flatten()->implode(' ');
         }
 
-        return $this->notifier->send($validated['subject'], $validated['body']);
+        return $this->notifier->send(
+            $validated['subject'],
+            $validated['summary'],
+            $validated['orders'],
+            $validated['recommendation'] ?? null,
+        );
     }
 
     public function schema(JsonSchema $schema): array
@@ -46,10 +54,25 @@ class SendAlertMailTool implements Tool
                 ->description('Naslov mejla, kratak i konkretan.')
                 ->required(),
 
-            'body' => $schema->string()
-                ->description('Telo mejla: koliko ima neobradjenih porudzbina, '
-                    .'koje su najhitnije i zasto. Obican tekst, bez HTML-a.')
+            'summary' => $schema->string()
+                ->description('Jedna recenica: koliko ima neobradjenih porudzbina '
+                    .'i od kada cekaju. Bez nabrajanja - to ide u orders.')
                 ->required(),
+
+            'orders' => $schema->array()
+                ->description('Porudzbine koje treba prikazati u tabeli, '
+                    .'najhitnije prvo. Najvise 20.')
+                ->min(1)
+                ->max(20)
+                ->items($schema->object([
+                    'id' => $schema->integer()->description('Broj porudzbine.')->required(),
+                    'customer' => $schema->string()->description('Ime kupca.')->required(),
+                    'amount' => $schema->number()->description('Ukupna vrednost.')->required(),
+                ]))
+                ->required(),
+
+            'recommendation' => $schema->string()
+                ->description('Jedna recenica sta prvo resiti i zasto.'),
         ];
     }
 }
