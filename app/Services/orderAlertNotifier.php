@@ -18,7 +18,10 @@ class OrderAlertNotifier
     /**
      * Salje alarm ako nije vec poslat. Vraca poruku o ishodu.
      */
-    public function send(string $subject, string $body): string
+    /**
+     * @param  array<int, array{id: int, customer: string, amount: float}>  $orders
+     */
+    public function send(string $subject, string $summary, array $orders, ?string $recommendation = null): string
     {
         if (Cache::has(self::CACHE_KEY)) {
             return 'Alarm je vec poslat u poslednjih '
@@ -31,7 +34,9 @@ class OrderAlertNotifier
             return 'Primalac nije podesen (ORDER_ALERT_RECIPIENT). Mejl nije poslat.';
         }
 
-        Mail::to($recipient)->send(new OrderAlertMail($subject, $body));
+        Mail::to($recipient)->send(
+            new OrderAlertMail($subject, $summary, $orders, $recommendation)
+        );
 
         Cache::put(
             self::CACHE_KEY,

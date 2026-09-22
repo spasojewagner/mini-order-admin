@@ -1,11 +1,25 @@
 <x-mail::message>
 # Neobrađene porudžbine
 
-{!! nl2br(e($body)) !!}
+{{ $summary }}
 
-<x-mail::button :url="config('app.url') . '/admin/orders'">
+<x-mail::table>
+| #  | Kupac            | Vrednost |
+|:---|:-----------------|---------:|
+@foreach ($orders as $order)
+| {{ $order['id'] }} | {{ $order['customer'] }} | {{ number_format((float) $order['amount'], 2, ',', '.') }} |
+@endforeach
+</x-mail::table>
+
+@if ($recommendation)
+**Preporuka:** {{ $recommendation }}
+@endif
+
+<x-mail::button :url="rtrim(config('app.url'), '/') . '/admin/orders'">
 Otvori porudžbine
 </x-mail::button>
 
-Ovu poruku je sastavio automatski agent.
+<x-mail::subcopy>
+Ovu poruku je sastavio automatski agent koji prati porudžbine.
+</x-mail::subcopy>
 </x-mail::message>
