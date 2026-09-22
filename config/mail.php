@@ -114,5 +114,5 @@ return [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
-
+    'order_alert_recipient' => env('ORDER_ALERT_RECIPIENT'),
 ];
