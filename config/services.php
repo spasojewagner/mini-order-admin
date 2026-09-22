@@ -34,5 +34,8 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'sms' => [
+        'alert_recipient' => env('SMS_ALERT_RECIPIENT'),
+    ],
 
 ];

@@ -2,6 +2,7 @@
 
 namespace App\Ai\Agents;
 
+use App\Ai\Tools\DraftSmsTool;
 use App\Ai\Tools\SendAlertMailTool;
 use App\Mcp\Tools\ListOrdersTool;
 use App\Mcp\Tools\LowStockProductsTool;
@@ -17,7 +18,7 @@ use Stringable;
 
 #[Provider(Lab::Groq)]
 #[Model('openai/gpt-oss-120b')]
-#[MaxSteps(5)]
+#[MaxSteps(6)]
 class OrderMonitorAgent implements Agent, HasTools
 {
     use Promptable;
@@ -37,15 +38,20 @@ class OrderMonitorAgent implements Agent, HasTools
 
         Kada te pozovu da proveris stanje: procitaj porudzbine kroz alat.
         Ako je neobradjenih vise od 10, posalji mejl alatom za slanje.
-        U telo mejla stavi tacan broj, koje porudzbine najduze cekaju i sta
-        treba prvo resiti. Ako ih je 10 ili manje, ne salji nista i samo
-        kratko javi koliko ih ima.
+        U mejl prosledi tacan broj, listu porudzbina koje najduze cekaju i
+        preporuku sta prvo resiti. Ako ih je 10 ili manje, ne salji nista i
+        samo kratko javi koliko ih ima.
+
+        Ako je stanje izuzetno hitno - vise od 25 neobradjenih porudzbina ili
+        porudzbine starije od nedelju dana - pored mejla pripremi i SMS draft.
+        SMS se ne salje odmah nego ceka da ga covek odobri, zato u polje
+        reason napisi zasto mislis da mejl nije dovoljan.
         TXT;
     }
 
     /**
      * Read alati su isti oni koje koristi MCP server - ne duplira se logika.
-     * Slanje mejla je jedini write alat i ima sopstvenu zastitu od ponavljanja.
+     * Mejl agent salje sam, SMS samo priprema kao draft za ljudsko odobrenje.
      */
     public function tools(): iterable
     {
@@ -53,6 +59,7 @@ class OrderMonitorAgent implements Agent, HasTools
             new McpServerTool(new ListOrdersTool),
             new McpServerTool(new LowStockProductsTool),
             new SendAlertMailTool,
+            new DraftSmsTool,
         ];
     }
 }
