@@ -37,5 +37,13 @@ return [
     'sms' => [
         'alert_recipient' => env('SMS_ALERT_RECIPIENT'),
     ],
+    'alerts' => [
+        'driver' => env('ALERT_DRIVER', 'log'),
+    ],
 
+    'whatsapp' => [
+        'token' => env('WHATSAPP_TOKEN'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'version' => env('WHATSAPP_API_VERSION', 'v21.0'),
+    ],
 ];
