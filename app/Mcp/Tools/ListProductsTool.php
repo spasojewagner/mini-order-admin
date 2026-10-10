@@ -9,30 +9,28 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Vraca listu aktivnih proizvoda sa cenom i trenutnim stanjem lagera. Koristi kada korisnik pita sta ima na stanju, koliko cega ima ili koliko nesto kosta.')]
+#[Description('Lists active products with SKU, category, price (RSD, excl. VAT), stock and reorder level. Use it when someone asks what is in stock, how much of something there is, or what it costs.')]
 class ListProductsTool extends Tool
 {
     public function handle(Request $request): Response
     {
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
+            'category' => ['nullable', 'string', 'max:60'],
             'only_in_stock' => ['nullable', 'boolean'],
         ]);
 
         $products = Product::query()
-            ->where('is_active', true)
-            ->when($validated['search'] ?? null, function ($query, $search) {
-                // Zagrada je obavezna: bez nje SQL veze AND jace od OR
-                // pa bi filter is_active otpao za deo rezultata.
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('sku', 'like', "%{$search}%");
-                });
-            })
+            ->active()
+            // The parentheses matter: without them OR would escape the is_active filter.
+            ->when($validated['search'] ?? null, fn ($query, $search) => $query->where(fn ($q) => $q
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('sku', 'like', "%{$search}%")))
+            ->when($validated['category'] ?? null, fn ($q, $category) => $q->where('category', $category))
             ->when($validated['only_in_stock'] ?? false, fn ($q) => $q->where('stock_quantity', '>', 0))
             ->orderBy('name')
             ->limit(100)
-            ->get(['id', 'sku', 'name', 'price', 'stock_quantity']);
+            ->get(['id', 'sku', 'name', 'category', 'price', 'stock_quantity', 'reorder_level']);
 
         return Response::text($products->toJson());
     }
@@ -40,12 +38,9 @@ class ListProductsTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'search' => $schema->string()
-                ->description('Pretraga po nazivu ili SKU oznaci proizvoda.'),
-
-            'only_in_stock' => $schema->boolean()
-                ->description('Ako je true, vraca samo proizvode kojih ima na lageru.')
-                ->default(false),
+            'search' => $schema->string()->description('Part of the product name or SKU.'),
+            'category' => $schema->string()->description('Exact category name, e.g. "Beverages".'),
+            'only_in_stock' => $schema->boolean()->description('Only products with stock above zero.')->default(false),
         ];
     }
 }

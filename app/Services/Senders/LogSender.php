@@ -9,6 +9,6 @@ class LogSender implements MessageSender
 {
     public function send(string $recipient, string $body): void
     {
-        Log::info('[ALERT] poruka za '.$recipient, ['body' => $body]);
+        Log::info('[ALERT] message to '.$recipient, ['body' => $body]);
     }
 }

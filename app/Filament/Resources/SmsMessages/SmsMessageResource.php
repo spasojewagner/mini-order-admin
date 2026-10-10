@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\SmsMessages;
 
-use App\Filament\Resources\SmsMessages\Pages\CreateSmsMessage;
 use App\Filament\Resources\SmsMessages\Pages\EditSmsMessage;
 use App\Filament\Resources\SmsMessages\Pages\ListSmsMessages;
 use App\Filament\Resources\SmsMessages\Pages\ViewSmsMessage;
@@ -15,14 +14,35 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class SmsMessageResource extends Resource
 {
     protected static ?string $model = SmsMessage::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDevicePhoneMobile;
+
+    protected static string|UnitEnum|null $navigationGroup = 'AI assistant';
+
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $navigationLabel = 'SMS approvals';
+
+    protected static ?string $modelLabel = 'SMS draft';
 
     protected static ?string $recordTitleAttribute = 'body';
+
+    public static function getNavigationBadge(): ?string
+    {
+        $pending = SmsMessage::query()->pending()->count();
+
+        return $pending ? (string) $pending : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -39,18 +59,10 @@ class SmsMessageResource extends Resource
         return SmsMessagesTable::configure($table);
     }
 
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
     public static function getPages(): array
     {
         return [
             'index' => ListSmsMessages::route('/'),
-            'create' => CreateSmsMessage::route('/create'),
             'view' => ViewSmsMessage::route('/{record}'),
             'edit' => EditSmsMessage::route('/{record}/edit'),
         ];

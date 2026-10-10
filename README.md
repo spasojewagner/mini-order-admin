@@ -1,249 +1,207 @@
 # Mini Order Admin
 
-Interni trening projekat — Laravel aplikacija za vođenje kupaca, proizvoda, porudžbina, lagera i poruka. Pojednostavljena verzija internog admin sistema: CRUD, interaktivni ekrani, admin panel, simulirana ERP sinhronizacija, AI draft flow za poruke, korisnička prodavnica i MCP server za AI klijente.
+[![tests](https://github.com/spasojewagner/mini-order-admin/actions/workflows/tests.yml/badge.svg)](https://github.com/spasojewagner/mini-order-admin/actions/workflows/tests.yml)
 
-## Tehnologije
-- PHP 8.2+
-- Laravel 12
-- Livewire
-- Filament (admin panel)
-- Inertia.js + React (korisnička strana)
-- Laravel MCP (MCP server za AI klijente)
-- SQLite (baza)
-- Blade
-- PHPUnit (testovi)
+Back office and customer portal for a wholesale distributor: business customers (shops, cafés, hotels) order online or through the sales team, the warehouse picks and ships, invoices go out with the goods, and an AI assistant keeps an eye on the backlog. The demo company is *Sava Trade d.o.o.*, a fictional distributor in Novi Sad.
 
-## Requirements
-- PHP 8.2+
-- Composer
-- Node.js / NPM
-- SQLite (dolazi uz PHP, ništa se posebno ne instalira)
+![Dashboard](docs/screenshots/dashboard.png)
 
-## Instalacija (pokretanje od nule)
-1. `composer install`
-2. `cp .env.example .env`
-3. `php artisan key:generate`
-4. `php artisan migrate --seed` (kreira tabele i puni demo podatke)
-5. `npm install`
-6. `npm run dev` (obavezno — Vite servira React deo)
-7. `php artisan serve` (u drugom terminalu)
+## Who uses it
 
-> **Za pokretanje testova treba `npm run build`, ne `npm run dev`.**
-> Dva testa renderuju Blade sa `@vite(...)` i traže `public/build/manifest.json`,
-> koji pravi samo build, a ne dev server. Bez toga `php artisan test` ne prolazi
-> iz čistog clone-a.
+| Role | Works in | Can |
+|---|---|---|
+| **Sales** | Back office (`/admin`) | Customers, orders, confirming and cancelling orders, the inbox with AI reply drafts |
+| **Warehouse** | Back office | Order board, picking, shipping, delivery, receiving goods, stock counts |
+| **Admin** | Back office | Everything above, plus users and roles, settings, SMS approvals, running the AI agent |
+| **Customer** | Portal (`/shop`) | Catalog, cart, ordering, order status, invoices, withdrawing an order before it is confirmed |
 
-Aplikacija se pokreće na http://127.0.0.1:8000
-Admin panel je na http://127.0.0.1:8000/admin
-Prodavnica je na http://127.0.0.1:8000/shop
+Each role sees only its own screens and buttons. The rules are enforced on the server for every channel, not just hidden in the UI.
 
-Baza je SQLite — fajl se kreira automatski, ništa se ne podešava ručno.
+## What it does
 
-## Test nalozi (za admin panel)
-Kreiraju se seedom. Role kontrolišu pristup:
+### Orders with a real lifecycle
 
-| Rola | Email | Lozinka | Pristup |
-|------|-------|---------|---------|
-| Admin | admin@test.com | admin123 | sve (kupci, proizvodi, porudžbine) |
-| Sales | sales@test.com | sales123 | kupci i porudžbine (bez proizvoda) |
-| Warehouse | warehouse@test.com | warehouse123 | proizvodi i porudžbine, samo pregled (bez kupaca) |
-
-Kupci se registruju sami kroz `/register` i nemaju pristup admin panelu.
-
-## Kako je projekat organizovan
-
-Projekat je građen u fazama, i svaka faza je dodala jedan sloj nad istim domenom i istom bazom. Slojevi postoje paralelno — nisu zamene, nego pokazuju isti sistem kroz različite pristupe:
-
-**1. Klasični Laravel (Blade + controller)** — Faza 1
-CRUD za kupce, proizvode i porudžbine kroz obične controller-e i Blade stranice, sa server-side validacijom. Rute: `/customers`, `/products`, `/orders`. Ovo je osnova — bez interaktivnosti, klasičan request/response.
-
-**2. Livewire ekrani** — Faza 2
-Interaktivni ekrani nad istim podacima: pretraga kupaca, filteri proizvoda, dinamička forma porudžbine, status board, inline editovanje, CSV import, dashboard, konverzacije. Rute: `/customers-search`, `/products-filters`, `/orders-create`, `/orders-board`, `/products-inline`, `/customers-import`, `/dashboard`, `/conversations`.
-
-**3. Filament admin panel** — Faza 3
-Produkcijski admin panel na `/admin`: resursi za kupce, proizvode, porudžbine i konverzacije, sa formama, tabelama, filterima, custom akcijama, dashboard widgetima i kontrolom pristupa po roli (Policy klase).
-
-**Faza 4 — integracije i AI flow**
-- ERP sinhronizacija: `php artisan app:sync-products` (čita `storage/app/erp-products.json`, kreira/ažurira proizvode po `external_id`, bez duplikata)
-- AI draft flow: u Filament konverzacijama dugme "Generate draft reply" pravi predlog odgovora (statički za sad), koji čovek pregleda i odobrava pre slanja
-- Filament import kupaca iz CSV-a sa validacijom i izveštajem o greškama
-
-**Faza 5 — cleanup i finalni review**
-Poslovna logika izvučena iz kontrolera u servise, uklonjen mrtav kod, sređene rute, dodat UserSeeder (projekat radi od nule), kompletiran README.
-
-**Faza 6 — Inertia + React (korisnička strana)**
-Instaliran Laravel Breeze sa Inertia i React (`resources/js/`). Inertia povezuje Laravel backend sa React frontendom bez zasebnog API-ja: controller vraća `Inertia::render('Stranica', [podaci])`, a React komponenta te podatke dobija kao props. Auth (registracija, prijava, profil) su React stranice.
-
-Korisnička strana (prodavnica): katalog proizvoda, detalj, korpa (sesija), poručivanje i pregled sopstvenih porudžbina. Poručivanje poziva postojeći `OrderCreationService` — isti servis koji koriste klasična Blade forma i Livewire forma, pa porudžbina napravljena iz prodavnice izgleda identično onoj iz admina i odmah je vidljiva u `/admin/orders`.
-
-Pristup: kupci se registruju kroz `/register` i dobijaju i `User` nalog i povezani `Customer` zapis (`users.customer_id`). Kupci nemaju pristup Filament panelu — `User::canAccessPanel()` pušta samo interne role (admin/sales/warehouse).
-
-Napomena: Breeze podrazumevano koristi `/dashboard`, ali ta ruta je već zauzeta Livewire dashboard-om (Faza 2), pa je Breeze stranica premeštena na `/account` — postojeći ekrani su ostali netaknuti.
-
-**Faza 7 — MCP server**
-
-MCP (Model Context Protocol) je standard kojim AI klijenti (Claude Desktop, Cursor, Codex) pozivaju alate unutar tuđe aplikacije. Server izlaže alate sa opisima, a model na osnovu tih opisa sam odlučuje koji da pozove. Smer je obrnut od uobičajenog: AI je klijent, a ova aplikacija je alat.
-
-Alati ne sadrže poslovnu logiku — zovu iste servise kao Filament i prodavnica. Zato `confirm-order-tool` i Confirm dugme u adminu dele isto pravilo o lageru i istu transakciju.
-
-Dostupni alati:
-
-| Alat | Šta radi | Tip |
-|------|----------|-----|
-| `list-products-tool` | proizvodi sa cenom i lagerom, pretraga i filter „samo na lageru" | read |
-| `search-customers-tool` | pretraga po imenu, firmi, emailu i telefonu | read |
-| `list-orders-tool` | porudžbine sa kupcem i statusom, filter po statusu | read |
-| `low-stock-products-tool` | proizvodi na ili ispod zadatog praga lagera | read |
-| `create-order-tool` | nova porudžbina u statusu draft (**ne dira lager**) | write |
-| `confirm-order-tool` | potvrda: provera lagera, skidanje, status `confirmed` | write |
-
-Lager se skida tek potvrdom, ne kreiranjem porudžbine. Draft porudžbina ne blokira robu.
-
-Alati su iza `ToolSearch` kataloga, pa klijent u `tools/list` vidi samo `search_tools` i `execute_tools`. Model prvo pretraži katalog po opisu, pa izvrši alat koji mu treba. Razlog: svaki oglašen alat šalje se klijentu uz **svaku** poruku, ne samo kad se koristi.
-
-Pokretanje i testiranje:
-
-```
-php artisan serve
-php artisan mcp:inspector mcp/order-admin
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Draft: sales
+    [*] --> New: customer portal
+    Draft --> New
+    Draft --> Confirmed
+    New --> Confirmed: sales · takes stock
+    Confirmed --> Picking: warehouse
+    Picking --> Shipped: warehouse · issues invoice
+    Shipped --> Delivered: warehouse
+    Draft --> Cancelled
+    New --> Cancelled
+    Confirmed --> Cancelled: returns stock
+    Picking --> Cancelled: admin · returns stock
 ```
 
-Server je na `http://127.0.0.1:8000/mcp/order-admin`.
+- **One place for the rules.** `OrderWorkflow` is the only code that changes an order's status. The back office, the customer portal, the MCP server and the AI agent all go through it, so a step can't be skipped from any of them.
+- **Stock taken at confirmation, all or nothing.** If one line is short, nothing changes. Rows are locked during the check, so two people can't sell the same last box.
+- **Cancelling puts stock back.** Lines are locked once an order is confirmed.
+- **Every change is in the order's timeline:** who did it, when, and through which channel (back office, portal, MCP, agent).
+- **Invoices issued on shipping,** numbered per year (`INV-2026-00042`), with VAT. They print or save as PDF from the browser.
+- **Customers get an email** when their order is confirmed, shipped, delivered or cancelled. A mail server failure is recorded in the timeline and does not undo the step.
 
-**Napomena o transportu:** `Mcp::local()` (stdio) ne radi na Windowsu — `StdioTransport` koristi `stream_set_blocking(STDIN, false)`, što PHP na Windows pipe-ovima ne podržava, pa server nikad ne pročita zahtev. Zato je registrovan `Mcp::web()`. Na Linuxu i macOS-u stdio radi i potreban je za povezivanje sa Claude Desktop-om.
+![Order](docs/screenshots/order.png)
 
-**Napomena o bezbednosti:** web transport je za sada bez autentikacije i ima write alate koji menjaju bazu. Pre izlaska van localhosta treba `->middleware('auth:sanctum')`.
+### Stock you can explain
 
-## Rute (mapa aplikacije)
+Stock changes in one way only: through `StockService`, which writes a movement each time: opening balance, goods received, order confirmed, order cancelled, stock correction or ERP sync. A product's stock always equals the sum of its movements (the demo data is tested for that). Every product has its own reorder level. Receiving goods and stock counts are buttons with a required reason; a count records the difference instead of overwriting the number.
 
-### Klasični Laravel — Faza 1 (controller + Blade)
-| Metoda | Ruta | Opis |
-|--------|------|------|
-| GET | `/customers` | lista kupaca + pretraga |
-| GET/POST | `/customers/create`, `/customers` | nov kupac |
-| GET/PUT | `/customers/{id}/edit` | izmena kupca |
-| DELETE | `/customers/{id}` | brisanje kupca |
-| GET | `/products` | lista proizvoda + pretraga |
-| GET/POST | `/products/create`, `/products` | nov proizvod |
-| GET/PUT | `/products/{id}/edit` | izmena proizvoda |
-| DELETE | `/products/{id}` | brisanje proizvoda |
-| GET | `/orders` | lista porudžbina |
-| GET/POST | `/orders/create`, `/orders` | nova porudžbina |
-| GET | `/orders/{id}` | detalji porudžbine |
-| POST | `/orders/{id}/confirm` | potvrda porudžbine (skida lager) |
+![Stock history](docs/screenshots/stock-history.png)
 
-### Livewire ekrani — Faza 2 (interaktivni)
-| Ruta | Ekran |
-|------|-------|
-| `/customers-search` | pretraga kupaca (live, debounce, paginacija) |
-| `/products-filters` | filteri proizvoda (status, lager, sortiranje) |
-| `/orders-create` | dinamička forma porudžbine |
-| `/orders-board` | status board sa dozvoljenim prelazima |
-| `/products-inline` | inline izmena naziva proizvoda |
-| `/customers-import` | CSV import kupaca |
-| `/dashboard` | dashboard sa filterom po periodu |
-| `/conversations` | konverzacije (poruke, statusi, kanali) |
+### Dashboard and order board
 
-### Filament admin panel — Faza 3
-| Ruta | Opis |
-|------|------|
-| `/admin` | admin panel (login, dashboard sa widgetima) |
-| `/admin/customers` | resurs kupaca (+ CSV import) |
-| `/admin/products` | resurs proizvoda |
-| `/admin/orders` | resurs porudžbina (+ Confirm akcija, stavke) |
-| `/admin/conversations` | konverzacije (+ Generate draft reply) |
+- **Today:** orders to confirm, work for the warehouse, orders stuck in one status longer than the limit, and products to reorder.
+- **Sales for any period:** revenue against the previous period, average order, days from order to shipment, revenue trend, best sellers and top customers. The warehouse doesn't see these.
+- **Order board:** a kanban view where each role moves orders one column to the right with one click.
 
-### Artisan komande — Faza 4
-| Komanda | Opis |
-|---------|------|
-| `php artisan app:sync-products` | ERP sinhronizacija proizvoda iz JSON-a |
+![Order board](docs/screenshots/board.png)
 
-### Inertia + React — Faza 6
-| Ruta | Opis |
-|------|------|
-| `/register` | registracija kupca (React) |
-| `/login` | prijava (React) |
-| `/account` | korisnički nalog (React) |
-| `/profile` | izmena profila (React) |
-| `/shop` | katalog proizvoda (pretraga, paginacija) |
-| `/shop/{id}` | detalj proizvoda + dodavanje u korpu |
-| `/cart` | korpa (izmena količine, uklanjanje) |
-| `/checkout` | poručivanje (poziva OrderCreationService) |
-| `/my-orders` | porudžbine ulogovanog kupca |
-| `/my-orders/{id}` | detalj sopstvene porudžbine |
+### Customer portal
 
-### MCP server — Faza 7
-| Ruta | Opis |
-|------|------|
-| `/mcp/order-admin` | MCP server (Streamable HTTP), registrovan u `routes/ai.php` |
+Customers (or anyone who signs up with a company name and tax ID) browse the catalog, order by the pack, and follow each order from placed to delivered. Invoices are in the portal.
 
-### Gde je poslovna logika
-Poslovna logika je izdvojena iz UI slojeva (controller / Livewire / Filament / Inertia / MCP) u zasebne klase, da bi bila na jednom mestu i da je svi slojevi mogu koristiti:
+| Catalog | Order status |
+|---|---|
+| ![Catalog](docs/screenshots/portal-catalog.png) | ![Order](docs/screenshots/portal-order.png) |
 
-- **`app/Services/OrderConfirmationService.php`** — potvrda porudžbine: provera lagera, skidanje lagera i promena statusa, sve u jednoj DB transakciji sa `lockForUpdate` (zaštita od istovremenih potvrda poslednjeg komada).
-- **`app/Services/OrderCreationService.php`** — kreiranje porudžbine sa stavkama i računanje ukupne vrednosti, u transakciji. Koriste ga klasična forma (controller), Livewire forma, checkout u prodavnici i MCP alat.
-- **`app/Observers/OrderItemObserver.php`** — automatski preračunava `total_amount` porudžbine kad se stavka doda, izmeni ili obriše.
-- **`app/Policies/`** — autorizacija po roli (admin/sales/warehouse), koju Filament poštuje u UI i na serveru.
+### AI assistant
 
-UI slojevi samo validiraju ulaz i pozivaju ove klase — ne sadrže poslovnu logiku. Isto važi i za prodavnicu (Faza 6) i za MCP alate (Faza 7): `CheckoutController` i `ConfirmOrderTool` validiraju ulaz i pozivaju servis, ne dupliraju logiku.
+- **Order monitor agent** (`app:monitor-orders`, hourly). It reads the open orders and low stock through the same tools the MCP server exposes. When the backlog is above the limit, it emails the manager. In an emergency it drafts an SMS that waits for an admin to approve it, and it never sends one by itself. The thresholds live in Settings. Every run, with what its tools did, is under *Agent runs*, and an admin can start one from there.
+- **Reply drafts in the inbox.** "Draft reply with AI" writes an answer to a customer conversation using that customer's real recent orders, statuses and invoice numbers, in the customer's language. The draft is marked as AI-written until someone edits it.
 
-## Struktura foldera (najvažnije)
+Both use Groq (`openai/gpt-oss-120b`) through `laravel/ai`.
+
+### MCP server for AI clients
+
+Claude Desktop, Cursor and other MCP clients can work with the system at `/mcp/order-admin` (Streamable HTTP).
+
+**Tools:**
+
+- products
+- customer search
+- orders
+- one order with its timeline
+- low stock
+- sales summary
+- create order
+- change order status
+
+The tools sit behind a search catalog, so the client sees two tools instead of eight.
+
+**Access:**
+
+- Every request needs a staff API token. Create one in the panel (user menu → *API tokens*) or with `php artisan app:mcp-token you@company.com`.
+- The token acts with its owner's role: a warehouse token cannot confirm orders, and a customer token is refused.
+
+```json
+{
+  "mcpServers": {
+    "order-admin": {
+      "command": "npx",
+      "args": ["mcp-remote", "http://localhost:8000/mcp/order-admin", "--header", "Authorization: Bearer YOUR_TOKEN"]
+    }
+  }
+}
+```
+
+![Invoice](docs/screenshots/invoice.png)
+
+## Tech
+
+Laravel 12 · PHP 8.4 · Filament 5 (back office) · Inertia + React 18 + Tailwind (portal) · Laravel MCP · Laravel AI (Groq) · Sanctum · SQLite · PHPUnit · Pint · GitHub Actions
+
 ```
 app/
-  Console/Commands/
-    SyncProducts.php          ERP sinhronizacija (php artisan app:sync-products)
-  Filament/
-    Resources/                admin resursi (Customers, Products, Orders, Conversations)
-    Widgets/                  dashboard widgeti (statistika, grafikon, poslednje porudžbine)
-    Imports/                  CustomerImporter (CSV import)
-  Http/Controllers/           klasični CRUD (Faza 1), prodavnica (Faza 6), Auth (Breeze)
-    ShopController.php        katalog i detalj proizvoda
-    CartController.php        korpa u sesiji
-    CheckoutController.php    poručivanje (poziva OrderCreationService)
-    MyOrdersController.php    porudžbine ulogovanog kupca
-  Livewire/                   interaktivni ekrani — Faza 2
-  Mcp/                        MCP server i alati — Faza 7
-    Servers/
-      OrderAdminServer.php    server: ime, verzija, instrukcije, katalog alata
-    Tools/                    alati (read i write), svaki zove servis ili model
-  Models/                     Eloquent modeli i relacije
-  Observers/
-    OrderItemObserver.php     automatski preračun total_amount
-  Policies/                   autorizacija po roli (Customer, Order, Product)
-  Providers/
-    Filament/                 AdminPanelProvider (podešavanje /admin panela)
-  Services/
-    OrderConfirmationService.php   potvrda porudžbine (lager + transakcija)
-    OrderCreationService.php       kreiranje porudžbine sa stavkama
-database/
-  migrations/                 struktura svih tabela
-  seeders/
-    DatabaseSeeder.php        glavni seeder (poziva ostale)
-    UserSeeder.php            test nalozi (admin, sales, warehouse)
-    OrderSeeder.php           demo porudžbine
-    ConversationSeeder.php    demo konverzacije i poruke
-  factories/                  generisanje demo kupaca i proizvoda
-resources/
-  views/                      Blade stranice (Faza 1) i Livewire šabloni (Faza 2)
-  js/                         React komponente kroz Inertia (Faza 6)
-    Pages/Shop/               prodavnica (katalog, detalj, korpa, checkout, porudžbine)
-    Pages/Auth/               registracija, prijava, reset lozinke
-    Layouts/ShopLayout.jsx    navigacija prodavnice (korpa sa brojem stavki)
-    Components/               React komponente (Breeze)
-routes/
-  web.php                     rute grupisane po fazama
-  ai.php                      registracija MCP servera — Faza 7
-storage/app/
-  erp-products.json           simulirani ERP izvor (za sync komandu)
-tests/Feature/                testovi najvažnijih tokova
+  Enums/OrderStatus.php          statuses and the allowed transitions
+  Services/OrderWorkflow.php     create orders, move them through their life
+  Services/StockService.php      the only writer of stock, with a movement per change
+  Services/InvoiceNumbers.php    INV-YYYY-NNNNN
+  Support/SalesReport.php        numbers for the dashboard and the AI tools
+  Support/Settings.php           company details and thresholds, editable in the panel
+  Mcp/                           MCP server and tools
+  Ai/                            order monitor agent, reply draft agent, their tools
+  Filament/                      back office: resources, dashboard widgets, board, settings
+  Http/Controllers/              customer portal and invoices
+database/seeders/DemoDataSeeder  six months of a distributor, consistent to the last box
 ```
 
-## Testovi
-```
-npm run build
-php artisan test
+## Running it
+
+```bash
+composer install
+npm install && npm run build
+cp .env.example .env
+php artisan key:generate
+php artisan migrate:fresh --seed      # demo data: ~650 orders over six months
+php artisan serve
 ```
 
-Testovi pokrivaju najvažnija poslovna pravila: kreiranje kupca i validaciju, kreiranje porudžbine, potvrdu koja skida lager, odbijanje potvrde kad nema lagera (atomarnost transakcije), Livewire formu i pretragu, kombinaciju pretrage i filtera, povezivanje naloga sa kupcem pri registraciji, zabranu pristupa admin panelu za kupce, poručivanje kroz prodavnicu (kreiranje porudžbine na pravog kupca, provera lagera, zabrana pristupa tuđoj porudžbini) i MCP alate kroz katalog (kreiranje i potvrda porudžbine, ponašanje kad nema lagera).
+- Back office: http://localhost:8000/admin
+- Customer portal: http://localhost:8000/shop
 
-`npm run build` je obavezan pre prvog pokretanja — bez njega dva testa koji renderuju Blade sa `@vite(...)` padaju sa „Unable to locate file in Vite manifest".
+All demo accounts use the password `password`:
+
+| Role | Email |
+|---|---|
+| Admin | `admin@demo.test` |
+| Sales | `sales@demo.test` |
+| Warehouse | `warehouse@demo.test` |
+| Customer (portal) | `shop@demo.test` |
+
+For the hourly order monitor, keep `php artisan schedule:work` running, or click *Run order monitor now* under *Agent runs*. Both need `GROQ_API_KEY` in `.env`.
+
+### Email (e.g. Gmail)
+
+Emails are written to `storage/logs/laravel.log` by default. To send real ones through Gmail, use an app password (Google account → Security → App passwords) and add to `.env`:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_SCHEME=smtp
+MAIL_USERNAME=you@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_FROM_ADDRESS=you@gmail.com
+MAIL_ALWAYS_TO=you@gmail.com   # locally: every email goes to you, never to demo customers
+ORDER_ALERT_RECIPIENT=you@gmail.com
+```
+
+Check the setup with `php artisan app:mail-test`.
+
+### Other commands
+
+| Command | |
+|---|---|
+| `php artisan app:monitor-orders` | run the AI order monitor once |
+| `php artisan app:mcp-token {email}` | API token for an MCP client |
+| `php artisan app:sync-products --path=file.json` | import products and stock from an ERP export |
+| `php artisan app:mail-test {to?}` | send a test email |
+
+## Tests
+
+```bash
+npm run build        # two tests render pages that need the Vite manifest
+php artisan test     # 105 tests
+vendor/bin/pint --test
+```
+
+The tests cover:
+
+- the order lifecycle: stock, invoices, emails, the timeline, and the role rules
+- the stock ledger
+- the MCP server: tokens, roles, and every tool
+- both AI agents, with faked model responses
+- the portal
+- the back-office buttons and every screen for every role
+- the consistency of the demo data
+
+CI runs them on every push and pull request.
+
+## Background
+
+This started as an internship project for learning the Laravel stack: plain controllers, then Livewire, then Filament, an MCP server and an AI agent. It was later rebuilt into one coherent product. The duplicate screens were removed, the business rules moved into one workflow, and the stock ledger, invoices, dashboard, portal and role model were added.

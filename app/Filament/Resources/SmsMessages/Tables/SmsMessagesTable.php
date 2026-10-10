@@ -2,18 +2,12 @@
 
 namespace App\Filament\Resources\SmsMessages\Tables;
 
+use App\Filament\Resources\SmsMessages\SmsApprovalActions;
 use App\Models\SmsMessage;
-use App\Services\SmsApprovalService;
-use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
-use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Validation\ValidationException;
-use Throwable;
 
 class SmsMessagesTable
 {
@@ -22,128 +16,22 @@ class SmsMessagesTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('id')
-                    ->label('#')
-                    ->sortable(),
-
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'pending' => 'warning',
-                        'sent' => 'success',
-                        'rejected' => 'danger',
-                        default => 'gray',
-                    })
-                    ->sortable(),
-
-                TextColumn::make('phone')
-                    ->label('Primalac')
-                    ->searchable(),
-
-                TextColumn::make('body')
-                    ->label('Poruka')
-                    ->limit(60)
-                    ->tooltip(fn (SmsMessage $record): string => $record->body)
-                    ->searchable(),
-
-                TextColumn::make('approvedBy.name')
-                    ->label('Odlučio')
-                    ->placeholder('—'),
-
-                TextColumn::make('approved_at')
-                    ->label('Odlučeno')
-                    ->dateTime('d.m.Y H:i')
-                    ->placeholder('—')
-                    ->sortable(),
-
-                TextColumn::make('sent_at')
-                    ->label('Poslato')
-                    ->dateTime('d.m.Y H:i')
-                    ->placeholder('—')
-                    ->sortable(),
-
-                TextColumn::make('created_at')
-                    ->label('Kreirano')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('status')->badge()->sortable()
+                    ->formatStateUsing(fn (string $state) => ['pending' => 'Waiting for approval', 'sent' => 'Sent', 'rejected' => 'Rejected'][$state] ?? $state)
+                    ->color(fn (string $state) => ['pending' => 'warning', 'sent' => 'success', 'rejected' => 'danger'][$state] ?? 'gray'),
+                TextColumn::make('body')->label('Text')->limit(70)->tooltip(fn (SmsMessage $record) => $record->body)->searchable()
+                    ->description(fn (SmsMessage $record) => $record->reason ? 'Reason: '.str($record->reason)->limit(80) : null),
+                TextColumn::make('phone')->label('To'),
+                TextColumn::make('approvedBy.name')->label('Decided by')->placeholder('—'),
+                TextColumn::make('created_at')->label('Drafted')->since()->sortable(),
             ])
             ->filters([
-                SelectFilter::make('status')
-                    ->label('Status')
-                    ->options([
-                        'pending' => 'Čeka odobrenje',
-                        'sent' => 'Poslato',
-                        'rejected' => 'Odbijeno',
-                    ]),
+                SelectFilter::make('status')->options(['pending' => 'Waiting for approval', 'sent' => 'Sent', 'rejected' => 'Rejected']),
             ])
             ->recordActions([
-                Action::make('approve')
-                    ->label('Odobri i pošalji')
-                    ->icon('heroicon-o-paper-airplane')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Odobri poruku')
-                    ->modalDescription('Poruka će biti stvarno poslata primaocu.')
-                    ->visible(fn (SmsMessage $record): bool => $record->status === 'pending')
-                    ->action(function (SmsMessage $record) {
-                        try {
-                            $message = app(SmsApprovalService::class)
-                                ->approve($record, auth()->user());
-
-                            Notification::make()
-                                ->title($message)
-                                ->success()
-                                ->send();
-                        } catch (ValidationException $e) {
-                            Notification::make()
-                                ->title('Greška pri odobravanju')
-                                ->body(collect($e->errors())->flatten()->implode(' '))
-                                ->danger()
-                                ->send();
-                        } catch (Throwable $e) {
-                            // Kanal je pukao - poruka ostaje pending pa moze ponovo.
-                            Notification::make()
-                                ->title('Slanje nije uspelo')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                Action::make('reject')
-                    ->label('Odbij')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('Odbij poruku')
-                    ->modalDescription('Poruka neće biti poslata.')
-                    ->visible(fn (SmsMessage $record): bool => $record->status === 'pending')
-                    ->action(function (SmsMessage $record) {
-                        try {
-                            $message = app(SmsApprovalService::class)
-                                ->reject($record, auth()->user());
-
-                            Notification::make()
-                                ->title($message)
-                                ->success()
-                                ->send();
-                        } catch (ValidationException $e) {
-                            Notification::make()
-                                ->title('Greška')
-                                ->body(collect($e->errors())->flatten()->implode(' '))
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                ViewAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                SmsApprovalActions::approve(),
+                SmsApprovalActions::reject(),
+                ViewAction::make()->iconButton(),
             ]);
     }
 }

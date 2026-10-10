@@ -115,4 +115,11 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
     'order_alert_recipient' => env('ORDER_ALERT_RECIPIENT'),
+
+    /*
+    | Send every email to this one address instead of the real recipient.
+    | Use it locally with real SMTP (e.g. Gmail) so demo customers with
+    | made-up addresses are never emailed. Leave empty in production.
+    */
+    'always_to' => env('MAIL_ALWAYS_TO'),
 ];

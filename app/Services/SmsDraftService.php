@@ -6,21 +6,19 @@ use App\Models\SmsMessage;
 
 class SmsDraftService
 {
-    /**
-     * Pravi SMS draft koji ceka ljudsko odobrenje. Ne salje nista.
-     */
+    /** Saves an SMS draft that waits for a person to approve it. Sends nothing. */
     public function draft(string $body, ?string $reason = null): string
     {
         $phone = config('services.sms.alert_recipient');
 
         if (blank($phone)) {
-            return 'Broj telefona nije podesen (SMS_ALERT_RECIPIENT). Draft nije napravljen.';
+            return 'No phone number is configured (SMS_ALERT_RECIPIENT). No draft was saved.';
         }
 
-        // Jedan draft na cekanju je dovoljan. Bez ovoga bi svako pokretanje
-        // schedulera dodavalo novi red i covek bi dobio gomilu istih poruka.
+        // One pending draft is enough. Without this check every scheduled run
+        // would add another one and the approver would get a pile of duplicates.
         if (SmsMessage::pending()->exists()) {
-            return 'Vec postoji SMS draft koji ceka odobrenje. Nov nije napravljen.';
+            return 'An SMS draft is already waiting for approval. No new draft was saved.';
         }
 
         $sms = SmsMessage::create([
@@ -30,6 +28,6 @@ class SmsDraftService
             'status' => 'pending',
         ]);
 
-        return "SMS draft #{$sms->id} je sacuvan i ceka odobrenje. Nije poslat.";
+        return "SMS draft #{$sms->id} saved; it waits for approval and has not been sent.";
     }
 }

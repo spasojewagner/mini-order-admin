@@ -12,8 +12,8 @@ class SmsApprovalService
     public function __construct(private MessageSender $sender) {}
 
     /**
-     * Odobrava i salje poruku. Ako slanje pukne, status ostaje pending
-     * pa moze da se pokusa ponovo.
+     * Approves and sends the message. If sending fails the status stays
+     * pending, so it can be tried again.
      */
     public function approve(SmsMessage $sms, User $user): string
     {
@@ -28,7 +28,7 @@ class SmsApprovalService
             'sent_at' => now(),
         ]);
 
-        return "Poruka #{$sms->id} je odobrena i poslata.";
+        return "Message #{$sms->id} approved and sent.";
     }
 
     public function reject(SmsMessage $sms, User $user): string
@@ -41,14 +41,14 @@ class SmsApprovalService
             'approved_at' => now(),
         ]);
 
-        return "Poruka #{$sms->id} je odbijena i nije poslata.";
+        return "Message #{$sms->id} rejected; it was not sent.";
     }
 
     private function guardPending(SmsMessage $sms): void
     {
         if ($sms->status !== 'pending') {
             throw ValidationException::withMessages([
-                'status' => "Poruka #{$sms->id} je vec obradjena (status: {$sms->status}).",
+                'status' => "Message #{$sms->id} was already handled (status: {$sms->status}).",
             ]);
         }
     }

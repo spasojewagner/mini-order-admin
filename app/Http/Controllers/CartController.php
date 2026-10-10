@@ -3,100 +3,44 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Support\Cart;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CartController extends Controller
 {
-    // Prikaz korpe
     public function index(): Response
     {
         return Inertia::render('Shop/Cart', [
-            'items' => $this->cartItems(),
-            'total' => $this->cartTotal(),
+            'items' => Cart::lines(),
+            'totals' => Cart::totals(),
         ]);
     }
 
-    // Dodavanje proizvoda u korpu
-    public function add(Request $request, Product $product)
+    public function add(Request $request, Product $product): RedirectResponse
     {
-        $request->validate([
-            'quantity' => 'required|integer|min:1',
-        ]);
-
+        $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:10000']]);
         abort_if(! $product->is_active, 404);
 
-        $cart = session()->get('cart', []);
-        $quantity = (int) $request->quantity;
+        Cart::add($product, (int) $data['quantity']);
 
-        // Ako je proizvod već u korpi — saberi količine
-        if (isset($cart[$product->id])) {
-            $cart[$product->id] += $quantity;
-        } else {
-            $cart[$product->id] = $quantity;
-        }
-
-        session()->put('cart', $cart);
-
-        return back()->with('success', 'Proizvod je dodat u korpu.');
+        return back()->with('success', "{$product->name} added to your cart.");
     }
 
-    // Promena količine
-    public function update(Request $request, Product $product)
+    public function update(Request $request, Product $product): RedirectResponse
     {
-        $request->validate([
-            'quantity' => 'required|integer|min:1',
-        ]);
-
-        $cart = session()->get('cart', []);
-
-        if (isset($cart[$product->id])) {
-            $cart[$product->id] = (int) $request->quantity;
-            session()->put('cart', $cart);
-        }
+        $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:10000']]);
+        Cart::set($product, (int) $data['quantity']);
 
         return back();
     }
 
-    // Uklanjanje stavke
-    public function remove(Product $product)
+    public function remove(Product $product): RedirectResponse
     {
-        $cart = session()->get('cart', []);
-        unset($cart[$product->id]);
-        session()->put('cart', $cart);
+        Cart::remove($product);
 
-        return back()->with('success', 'Stavka je uklonjena iz korpe.');
-    }
-
-    // Pomoćna: stavke korpe sa svežim podacima iz baze
-    private function cartItems(): array
-    {
-        $cart = session()->get('cart', []);
-
-        if (empty($cart)) {
-            return [];
-        }
-
-        $products = Product::whereIn('id', array_keys($cart))->get();
-
-        return $products->map(function ($product) use ($cart) {
-            $quantity = $cart[$product->id];
-
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'sku' => $product->sku,
-                'price' => (float) $product->price,
-                'quantity' => $quantity,
-                'stock' => $product->stock_quantity,
-                'subtotal' => (float) $product->price * $quantity,
-            ];
-        })->values()->all();
-    }
-
-    private function cartTotal(): float
-    {
-        return collect($this->cartItems())->sum('subtotal');
+        return back()->with('success', "{$product->name} removed from your cart.");
     }
 }

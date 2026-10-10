@@ -8,6 +8,8 @@ import { Head, Link, useForm } from '@inertiajs/react';
 export default function Register() {
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
+        company_name: '',
+        tax_id: '',
         email: '',
         password: '',
         password_confirmation: '',
@@ -23,11 +25,11 @@ export default function Register() {
 
     return (
         <GuestLayout>
-            <Head title="Register" />
+            <Head title="Open an account" />
 
             <form onSubmit={submit}>
                 <div>
-                    <InputLabel htmlFor="name" value="Name" />
+                    <InputLabel htmlFor="name" value="Your name" />
 
                     <TextInput
                         id="name"
@@ -41,6 +43,33 @@ export default function Register() {
                     />
 
                     <InputError message={errors.name} className="mt-2" />
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="sm:col-span-2">
+                        <InputLabel htmlFor="company_name" value="Company (optional)" />
+                        <TextInput
+                            id="company_name"
+                            name="company_name"
+                            value={data.company_name}
+                            className="mt-1 block w-full"
+                            autoComplete="organization"
+                            onChange={(e) => setData('company_name', e.target.value)}
+                        />
+                        <InputError message={errors.company_name} className="mt-2" />
+                    </div>
+                    <div>
+                        <InputLabel htmlFor="tax_id" value="Tax ID (PIB)" />
+                        <TextInput
+                            id="tax_id"
+                            name="tax_id"
+                            value={data.tax_id}
+                            className="mt-1 block w-full"
+                            inputMode="numeric"
+                            onChange={(e) => setData('tax_id', e.target.value)}
+                        />
+                        <InputError message={errors.tax_id} className="mt-2" />
+                    </div>
                 </div>
 
                 <div className="mt-4">
@@ -111,7 +140,7 @@ export default function Register() {
                     </Link>
 
                     <PrimaryButton className="ms-4" disabled={processing}>
-                        Register
+                        Open account
                     </PrimaryButton>
                 </div>
             </form>

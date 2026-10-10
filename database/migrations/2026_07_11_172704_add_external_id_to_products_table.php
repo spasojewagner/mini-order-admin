@@ -19,7 +19,7 @@ return new class extends Migration
     /**
      * Reverse the migrations.
      */
-   public function down(): void
+    public function down(): void
     {
         Schema::table('products', function (Blueprint $table) {
             $table->dropUnique(['external_id']);

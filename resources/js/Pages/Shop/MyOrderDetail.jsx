@@ -1,81 +1,105 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import StatusBadge from '@/Components/StatusBadge';
 import ShopLayout from '@/Layouts/ShopLayout';
+import Totals from '@/Pages/Shop/Totals';
+import { date, dateTime, rsd } from '@/lib/format';
 
-const STATUS_LABELS = {
-    draft: 'U pripremi',
-    new: 'Nova',
-    confirmed: 'Potvrđena',
-    in_progress: 'U obradi',
-    shipped: 'Poslata',
-    cancelled: 'Otkazana',
-};
+function Steps({ steps }) {
+    return (
+        <ol className="grid grid-cols-5 gap-2">
+            {steps.map((step) => (
+                <li key={step.label} className="text-center">
+                    <div className={`h-1.5 rounded-full ${step.done ? 'bg-indigo-600' : 'bg-slate-200'}`} />
+                    <div className={`mt-2 text-xs font-medium ${step.done ? 'text-slate-900' : 'text-slate-400'}`}>{step.label}</div>
+                    <div className="text-[11px] text-slate-400">{step.at ? dateTime(step.at) : ''}</div>
+                </li>
+            ))}
+        </ol>
+    );
+}
 
 export default function MyOrderDetail({ order }) {
+    const cancel = () => {
+        if (confirm(`Cancel order ${order.number}?`)) {
+            router.post(route('my-orders.cancel', order.id), {}, { preserveScroll: true });
+        }
+    };
+
     return (
-        <>
-            <Head title={`Porudžbina #${order.id}`} />
+        <ShopLayout>
+            <Head title={order.number} />
+            <Link href={route('my-orders.index')} className="text-sm text-indigo-600 hover:underline">← My orders</Link>
 
-            <div className="max-w-3xl mx-auto p-6">
-                <Link href={route('my-orders.index')} className="text-sm text-blue-600 hover:underline">
-                    ← Moje porudžbine
-                </Link>
-
-                <h1 className="mt-4 text-2xl font-bold text-gray-900">
-                    Porudžbina #{order.id}
-                </h1>
-
-                <div className="mt-4 rounded-lg bg-white p-6 shadow">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <span className="text-gray-500">Status:</span>{' '}
-                            <span className="font-medium">
-                                {STATUS_LABELS[order.status] || order.status}
-                            </span>
-                        </div>
-                        <div>
-                            <span className="text-gray-500">Datum:</span>{' '}
-                            <span className="font-medium">
-                                {new Date(order.created_at).toLocaleString('sr-RS')}
-                            </span>
-                        </div>
-                    </div>
-
-                    {order.note && (
-                        <div className="mt-4 text-sm">
-                            <span className="text-gray-500">Napomena:</span> {order.note}
-                        </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-slate-900">{order.number}</h1>
+                    <StatusBadge label={order.status_label} color={order.status_color} />
+                </div>
+                <div className="flex gap-2">
+                    {order.invoice_url && (
+                        <a href={order.invoice_url} target="_blank" rel="noreferrer" className="rounded-md bg-white px-3 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
+                            Invoice {order.invoice_number}
+                        </a>
+                    )}
+                    {order.can_cancel && (
+                        <button type="button" onClick={cancel} className="rounded-md px-3 py-2 text-sm font-medium text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50">
+                            Cancel order
+                        </button>
                     )}
                 </div>
+            </div>
+            <p className="mt-1 text-sm text-slate-500">Placed {date(order.created_at)}</p>
 
-                <div className="mt-6 overflow-hidden rounded-lg bg-white shadow">
+            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                {order.status === 'cancelled' ? (
+                    <p className="text-sm text-rose-700">This order was cancelled.</p>
+                ) : (
+                    <Steps steps={order.steps} />
+                )}
+            </div>
+
+            <div className="mt-6 grid gap-6 lg:grid-cols-3">
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
                     <table className="w-full text-sm">
-                        <thead className="bg-gray-50 text-left text-gray-600">
+                        <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                             <tr>
-                                <th className="p-3">Proizvod</th>
-                                <th className="p-3">Cena</th>
-                                <th className="p-3">Količina</th>
-                                <th className="p-3 text-right">Ukupno</th>
+                                <th className="px-4 py-3">Product</th>
+                                <th className="px-4 py-3 text-right">Price</th>
+                                <th className="px-4 py-3 text-right">Qty</th>
+                                <th className="px-4 py-3 text-right">Amount</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-slate-100">
                             {order.items.map((item) => (
-                                <tr key={item.id} className="border-t">
-                                    <td className="p-3">{item.product_name}</td>
-                                    <td className="p-3">{Number(item.unit_price).toFixed(2)}</td>
-                                    <td className="p-3">{item.quantity}</td>
-                                    <td className="p-3 text-right font-medium">
-                                        {Number(item.subtotal).toFixed(2)}
-                                    </td>
+                                <tr key={item.id}>
+                                    <td className="px-4 py-3">{item.product_name}</td>
+                                    <td className="px-4 py-3 text-right text-slate-600">{rsd(item.unit_price)}</td>
+                                    <td className="px-4 py-3 text-right">{item.quantity}</td>
+                                    <td className="px-4 py-3 text-right font-medium">{rsd(item.subtotal)}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
 
-                <div className="mt-4 text-right text-xl font-bold text-gray-900">
-                    Ukupno: {Number(order.total_amount).toFixed(2)} RSD
-                </div>
+                <aside className="space-y-6">
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <Totals totals={order.totals} />
+                        {order.note && <p className="mt-4 border-t border-slate-100 pt-3 text-sm text-slate-600"><span className="font-medium">Note:</span> {order.note}</p>}
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <h2 className="mb-3 text-sm font-semibold text-slate-900">History</h2>
+                        <ul className="space-y-2 text-sm">
+                            {order.history.map((h) => (
+                                <li key={h.id} className="flex justify-between gap-3">
+                                    <span className="text-slate-700">{h.text}</span>
+                                    <span className="shrink-0 text-xs text-slate-400">{dateTime(h.at)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </aside>
             </div>
-        </>
+        </ShopLayout>
     );
 }

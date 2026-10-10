@@ -5,7 +5,7 @@ namespace App\Contracts;
 interface MessageSender
 {
     /**
-     * Salje poruku primaocu. Baca izuzetak ako ne uspe.
+     * Sends the message to the recipient. Throws if it fails.
      */
     public function send(string $recipient, string $body): void;
 }

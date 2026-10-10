@@ -2,6 +2,7 @@
 
 namespace App\Ai\Tools;
 
+use App\Models\AgentRun;
 use App\Services\OrderAlertNotifier;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\ValidationException;
@@ -17,10 +18,9 @@ class SendAlertMailTool implements Tool
 
     public function description(): Stringable|string
     {
-        return 'Salje mejl menadzeru o neobradjenim porudzbinama. '
-            .'Koristi ovaj alat samo kada broj neobradjenih porudzbina '
-            .'stvarno prelazi zadati prag. Salje se najvise jednom u '
-            .OrderAlertNotifier::COOLDOWN_HOURS.' sati.';
+        return 'Emails the manager about the order backlog. Use it only when the number of open '
+            .'orders really is above the threshold. At most one email per '
+            .OrderAlertNotifier::COOLDOWN_HOURS.' hours is sent; later calls are refused.';
     }
 
     public function handle(Request $request): Stringable|string
@@ -36,43 +36,39 @@ class SendAlertMailTool implements Tool
                 'recommendation' => ['nullable', 'string', 'max:500'],
             ]);
         } catch (ValidationException $e) {
-            return 'Neispravni argumenti: '.collect($e->errors())->flatten()->implode(' ');
+            return 'Invalid arguments: '.collect($e->errors())->flatten()->implode(' ');
         }
 
-        return $this->notifier->send(
+        $result = $this->notifier->send(
             $validated['subject'],
             $validated['summary'],
             $validated['orders'],
             $validated['recommendation'] ?? null,
         );
+
+        AgentRun::record('send_alert_mail', $result);
+
+        return $result;
     }
 
     public function schema(JsonSchema $schema): array
     {
         return [
-            'subject' => $schema->string()
-                ->description('Naslov mejla, kratak i konkretan.')
-                ->required(),
-
+            'subject' => $schema->string()->description('Short, specific subject line.')->required(),
             'summary' => $schema->string()
-                ->description('Jedna recenica: koliko ima neobradjenih porudzbina '
-                    .'i od kada cekaju. Bez nabrajanja - to ide u orders.')
+                ->description('One sentence: how many orders are open and since when. No list here; that goes in orders.')
                 ->required(),
-
             'orders' => $schema->array()
-                ->description('Porudzbine koje treba prikazati u tabeli, '
-                    .'najhitnije prvo. Najvise 20.')
+                ->description('Orders for the table in the email, most urgent first. At most 20.')
                 ->min(1)
                 ->max(20)
                 ->items($schema->object([
-                    'id' => $schema->integer()->description('Broj porudzbine.')->required(),
-                    'customer' => $schema->string()->description('Ime kupca.')->required(),
-                    'amount' => $schema->number()->description('Ukupna vrednost.')->required(),
+                    'id' => $schema->integer()->description('Order id.')->required(),
+                    'customer' => $schema->string()->description('Customer name.')->required(),
+                    'amount' => $schema->number()->description('Order total.')->required(),
                 ]))
                 ->required(),
-
-            'recommendation' => $schema->string()
-                ->description('Jedna recenica sta prvo resiti i zasto.'),
+            'recommendation' => $schema->string()->description('One sentence: what to handle first and why.'),
         ];
     }
 }

@@ -18,54 +18,54 @@ class SmsDraftServiceTest extends TestCase
         config(['services.sms.alert_recipient' => '+381601234567']);
     }
 
-    public function test_pravi_draft_koji_ceka_odobrenje(): void
+    public function test_saves_a_draft_that_waits_for_approval(): void
     {
         $result = (new SmsDraftService)->draft(
-            'Hitno: 30 neobradjenih porudzbina.',
-            'Prag je dvostruko prekoracen.'
+            'Urgent: 30 open orders.',
+            'Twice the limit.'
         );
 
         $this->assertDatabaseHas('sms_messages', [
             'phone' => '+381601234567',
-            'body' => 'Hitno: 30 neobradjenih porudzbina.',
+            'body' => 'Urgent: 30 open orders.',
             'status' => 'pending',
         ]);
 
-        // Nista nije poslato - samo sacuvano.
+        // Nothing was sent, only saved.
         $this->assertNull(SmsMessage::first()->sent_at);
-        $this->assertStringContainsString('ceka odobrenje', $result);
+        $this->assertStringContainsString('waits for approval', $result);
     }
 
-    public function test_ne_pravi_drugi_draft_dok_prvi_ceka(): void
+    public function test_no_second_draft_while_one_is_pending(): void
     {
         $service = new SmsDraftService;
 
-        $service->draft('Prvi.');
-        $result = $service->draft('Drugi.');
+        $service->draft('First.');
+        $result = $service->draft('Second.');
 
         $this->assertDatabaseCount('sms_messages', 1);
-        $this->assertStringContainsString('Vec postoji', $result);
+        $this->assertStringContainsString('already waiting', $result);
     }
 
-    public function test_pravi_nov_draft_kada_je_prethodni_obradjen(): void
+    public function test_a_new_draft_once_the_previous_was_handled(): void
     {
         $service = new SmsDraftService;
 
-        $service->draft('Prvi.');
+        $service->draft('First.');
         SmsMessage::first()->update(['status' => 'rejected']);
 
-        $service->draft('Drugi.');
+        $service->draft('Second.');
 
         $this->assertDatabaseCount('sms_messages', 2);
     }
 
-    public function test_ne_pravi_draft_kada_broj_nije_podesen(): void
+    public function test_no_draft_without_a_phone_number(): void
     {
         config(['services.sms.alert_recipient' => null]);
 
-        $result = (new SmsDraftService)->draft('Telo.');
+        $result = (new SmsDraftService)->draft('Body.');
 
         $this->assertDatabaseCount('sms_messages', 0);
-        $this->assertStringContainsString('nije podesen', $result);
+        $this->assertStringContainsString('No phone number', $result);
     }
 }

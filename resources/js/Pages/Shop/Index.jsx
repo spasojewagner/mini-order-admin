@@ -1,97 +1,134 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import Availability from '@/Components/Availability';
 import ShopLayout from '@/Layouts/ShopLayout';
+import { rsd } from '@/lib/format';
 
-export default function Index({ products, filters }) {
+function ProductCard({ product }) {
+    const [quantity, setQuantity] = useState(1);
+    const [adding, setAdding] = useState(false);
+    const out = product.availability === 'out';
+
+    const add = () => {
+        setAdding(true);
+        router.post(route('cart.add', product.id), { quantity }, { preserveScroll: true, onFinish: () => setAdding(false) });
+    };
+
+    return (
+        <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+            <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{product.category}</div>
+            <Link href={route('shop.show', product.id)} className="mt-1 font-semibold text-slate-900 hover:text-indigo-700">
+                {product.name}
+            </Link>
+            <div className="mt-0.5 text-xs text-slate-400">{product.sku}</div>
+            <div className="mt-auto flex items-end justify-between pt-4">
+                <div>
+                    <div className="text-lg font-bold text-slate-900">{rsd(product.price)}</div>
+                    <Availability value={product.availability} stock={product.stock} />
+                </div>
+                <div className="flex items-center gap-1">
+                    <input
+                        type="number"
+                        min="1"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                        className="w-16 rounded-md border-slate-300 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        aria-label={`Quantity of ${product.name}`}
+                        disabled={out}
+                    />
+                    <button
+                        type="button"
+                        onClick={add}
+                        disabled={out || adding}
+                        className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    >
+                        Add
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function Index({ products, categories, filters }) {
     const [search, setSearch] = useState(filters.search || '');
 
-    // Pretraga — šalje GET na istu rutu sa search parametrom
-    function handleSearch(e) {
-        e.preventDefault();
-        router.get(route('shop.index'), { search }, {
-            preserveState: true,
-            replace: true,
-        });
-    }
+    const go = (params) =>
+        router.get(route('shop.index'), { search, category: filters.category, ...params }, { preserveState: true, replace: true });
 
     return (
         <ShopLayout>
-            <Head title="Prodavnica" />
+            <Head title="Catalog" />
 
-            <div className="max-w-6xl mx-auto p-6">
-             <h1 className="mb-6 text-2xl font-bold text-gray-900">Proizvodi</h1>
-
-                <form onSubmit={handleSearch} className="mb-6 flex gap-2">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">Catalog</h1>
+                    <p className="mt-1 text-sm text-slate-500">Order by the pack. We confirm orders within one working day.</p>
+                </div>
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        go({ page: undefined });
+                    }}
+                    className="flex w-full gap-2 sm:w-auto"
+                >
                     <input
-                        type="text"
+                        type="search"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Pretraži po nazivu ili SKU..."
-                        className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Search by name or SKU"
+                        className="w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:w-72"
                     />
-                    <button
-                        type="submit"
-                        className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-                    >
-                        Pretraži
+                    <button type="submit" className="rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-700">
+                        Search
                     </button>
                 </form>
-
-                {products.data.length === 0 ? (
-                    <div className="rounded-lg bg-white p-8 text-center text-gray-500 shadow">
-                        Nema proizvoda za zadatu pretragu.
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {products.data.map((product) => (
-                            <Link
-                                key={product.id}
-                                href={route('shop.show', product.id)}
-                                className="rounded-lg bg-white p-4 shadow transition hover:shadow-md"
-                            >
-                                <div className="font-semibold text-gray-900">{product.name}</div>
-                                <div className="mt-1 text-sm text-gray-500">
-                                    {product.sku || 'bez SKU'}
-                                </div>
-                                <div className="mt-3 text-lg font-bold text-gray-900">
-                                    {Number(product.price).toFixed(2)} RSD
-                                </div>
-                                <div className="mt-1 text-sm">
-                                    {product.stock_quantity > 0 ? (
-                                        <span className="text-green-600">
-                                            Na stanju: {product.stock_quantity}
-                                        </span>
-                                    ) : (
-                                        <span className="text-red-600">Nema na stanju</span>
-                                    )}
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                )}
-
-                {/* Paginacija */}
-                {products.links.length > 3 && (
-                    <div className="mt-6 flex flex-wrap gap-1">
-                        {products.links.map((link, i) => (
-                            <Link
-                                key={i}
-                                href={link.url || '#'}
-                                className={`rounded px-3 py-1 text-sm ${
-                                    link.active
-                                        ? 'bg-blue-600 text-white'
-                                        : link.url
-                                        ? 'bg-white text-blue-600 hover:bg-gray-50'
-                                        : 'bg-white text-gray-400 cursor-default'
-                                }`}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
-                        ))}
-                    </div>
-                )}
             </div>
-        
-       </ShopLayout>
+
+            <div className="mt-6 flex flex-wrap gap-2">
+                {[null, ...categories].map((category) => (
+                    <button
+                        key={category ?? 'all'}
+                        type="button"
+                        onClick={() => go({ category, page: undefined })}
+                        className={`rounded-full px-3 py-1 text-sm ring-1 ring-inset ${
+                            (filters.category ?? null) === category
+                                ? 'bg-indigo-600 text-white ring-indigo-600'
+                                : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
+                        }`}
+                    >
+                        {category ?? 'All products'}
+                    </button>
+                ))}
+            </div>
+
+            {products.data.length === 0 ? (
+                <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
+                    No products match your search.
+                </div>
+            ) : (
+                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {products.data.map((product) => (
+                        <ProductCard key={product.id} product={product} />
+                    ))}
+                </div>
+            )}
+
+            {products.last_page > 1 && (
+                <div className="mt-8 flex flex-wrap gap-1">
+                    {products.links.map((link, i) => (
+                        <Link
+                            key={i}
+                            href={link.url || '#'}
+                            preserveScroll
+                            className={`rounded-md px-3 py-1.5 text-sm ${
+                                link.active ? 'bg-indigo-600 text-white' : link.url ? 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50' : 'cursor-default text-slate-300'
+                            }`}
+                            dangerouslySetInnerHTML={{ __html: link.label }}
+                        />
+                    ))}
+                </div>
+            )}
+        </ShopLayout>
     );
-     
 }

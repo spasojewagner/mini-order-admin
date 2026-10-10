@@ -1,65 +1,48 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
+import Availability from '@/Components/Availability';
 import ShopLayout from '@/Layouts/ShopLayout';
+import { rsd } from '@/lib/format';
 
 export default function Show({ product }) {
-    const { data, setData, post, processing } = useForm({
-        quantity: 1,
-    });
-
-    function addToCart(e) {
-        e.preventDefault();
-        post(route('cart.add', product.id));
-    }
+    const [quantity, setQuantity] = useState(1);
+    const out = product.availability === 'out';
 
     return (
         <ShopLayout>
             <Head title={product.name} />
 
-            <div className="max-w-3xl mx-auto p-6">
-                <Link href={route('shop.index')} className="text-sm text-blue-600 hover:underline">
-                    ← Nazad na prodavnicu
-                </Link>
+            <Link href={route('shop.index')} className="text-sm text-indigo-600 hover:underline">← Back to catalog</Link>
 
-                <div className="mt-4 rounded-lg bg-white p-6 shadow">
-                    <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
-                    <div className="mt-1 text-sm text-gray-500">SKU: {product.sku || '—'}</div>
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+                <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{product.category}</div>
+                <h1 className="mt-1 text-2xl font-bold text-slate-900">{product.name}</h1>
+                <div className="mt-1 text-sm text-slate-500">SKU {product.sku}</div>
 
-                    <div className="mt-6 text-3xl font-bold text-gray-900">
-                        {Number(product.price).toFixed(2)} RSD
+                <div className="mt-6 flex flex-wrap items-end justify-between gap-6">
+                    <div>
+                        <div className="text-3xl font-bold text-slate-900">{rsd(product.price)}</div>
+                        <div className="text-sm text-slate-500">per pack, excl. VAT</div>
+                        <div className="mt-2"><Availability value={product.availability} stock={product.stock} /></div>
                     </div>
-
-                    <div className="mt-2">
-                        {product.stock_quantity > 0 ? (
-                            <span className="text-green-600">
-                                Na stanju: {product.stock_quantity} kom
-                            </span>
-                        ) : (
-                            <span className="text-red-600">Trenutno nema na stanju</span>
-                        )}
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="number"
+                            min="1"
+                            value={quantity}
+                            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                            className="w-24 rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            disabled={out}
+                        />
+                        <button
+                            type="button"
+                            disabled={out}
+                            onClick={() => router.post(route('cart.add', product.id), { quantity })}
+                            className="rounded-md bg-indigo-600 px-5 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300"
+                        >
+                            Add to cart
+                        </button>
                     </div>
-
-                    {product.stock_quantity > 0 && (
-                        <form onSubmit={addToCart} className="mt-6 flex items-end gap-3">
-                            <div>
-                                <label className="block text-sm text-gray-700">Količina</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max={product.stock_quantity}
-                                    value={data.quantity}
-                                    onChange={(e) => setData('quantity', parseInt(e.target.value) || 1)}
-                                    className="mt-1 w-24 rounded-md border-gray-300 shadow-sm"
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="rounded-md bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:bg-gray-300"
-                            >
-                                Dodaj u korpu
-                            </button>
-                        </form>
-                    )}
                 </div>
             </div>
         </ShopLayout>
