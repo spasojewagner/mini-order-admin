@@ -2,101 +2,70 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
-use App\Services\OrderCreationService;
+use App\Enums\OrderStatus;
+use App\Services\OrderWorkflow;
+use App\Support\Cart;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CheckoutController extends Controller
 {
-    // Pregled pre poručivanja
-    public function index(): Response
+    public function index(): Response|RedirectResponse
     {
+        if (Cart::count() === 0) {
+            return redirect()->route('cart.index');
+        }
+
         return Inertia::render('Shop/Checkout', [
-            'items' => $this->cartItems(),
-            'total' => $this->cartTotal(),
+            'items' => Cart::lines(),
+            'totals' => Cart::totals(),
         ]);
     }
 
-    // Kreiranje porudžbine — koristi postojeći servis
-    public function store(Request $request, OrderCreationService $service)
+    public function store(Request $request, OrderWorkflow $workflow): RedirectResponse
     {
-        $request->validate([
-            'note' => 'nullable|string|max:1000',
-        ]);
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:1000']]);
 
-        $cart = session()->get('cart', []);
-
-        if (empty($cart)) {
-            return redirect()->route('cart.index')->with('error', 'Korpa je prazna.');
+        $lines = Cart::lines();
+        if ($lines === []) {
+            return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
         }
 
         $customerId = $request->user()->customer_id;
-
         if (! $customerId) {
-            return redirect()->route('cart.index')
-                ->with('error', 'Vaš nalog nije povezan sa kupcem.');
+            return redirect()->route('cart.index')->with('error', 'Your account is not linked to a customer yet. Please contact us.');
         }
 
-        // Provera lagera pre kreiranja (sveže iz baze)
-        $products = Product::whereIn('id', array_keys($cart))->get()->keyBy('id');
-
-        foreach ($cart as $productId => $quantity) {
-            $product = $products->get($productId);
-
-            if (! $product || ! $product->is_active) {
-                return back()->with('error', 'Neki proizvod iz korpe više nije dostupan.');
+        // Stock is reserved only when the company confirms the order, but a
+        // request for more than is on the shelf is refused right away.
+        foreach ($lines as $line) {
+            if (! $line['available']) {
+                return back()->with('error', "{$line['name']} is no longer available.");
             }
-
-            if ($product->stock_quantity < $quantity) {
-                return back()->with(
-                    'error',
-                    "Nedovoljno lagera za '{$product->name}'. Dostupno: {$product->stock_quantity}."
-                );
+            if ($line['stock'] < $line['quantity']) {
+                return back()->with('error', "Only {$line['stock']} × {$line['name']} in stock.");
             }
         }
 
-        // Pretvori korpu u format koji servis očekuje
-        $items = [];
-        foreach ($cart as $productId => $quantity) {
-            $items[] = ['product_id' => $productId, 'quantity' => $quantity];
+        try {
+            $order = $workflow->create(
+                $customerId,
+                array_map(fn ($l) => ['product_id' => $l['id'], 'quantity' => $l['quantity']], $lines),
+                $data['note'] ?? null,
+                via: 'portal',
+                by: $request->user(),
+                status: OrderStatus::New,
+            );
+        } catch (ValidationException $e) {
+            return back()->with('error', collect($e->errors())->flatten()->first());
         }
 
-        $order = $service->create($customerId, $items, $request->note);
+        Cart::clear();
 
-        // Isprazni korpu
-        session()->forget('cart');
-
-        return redirect()->route('my-orders.show', $order->id)
-            ->with('success', 'Porudžbina je uspešno kreirana.');
-    }
-
-    private function cartItems(): array
-    {
-        $cart = session()->get('cart', []);
-
-        if (empty($cart)) {
-            return [];
-        }
-
-        $products = Product::whereIn('id', array_keys($cart))->get();
-
-        return $products->map(function ($product) use ($cart) {
-            $quantity = $cart[$product->id];
-
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'price' => (float) $product->price,
-                'quantity' => $quantity,
-                'subtotal' => (float) $product->price * $quantity,
-            ];
-        })->values()->all();
-    }
-
-    private function cartTotal(): float
-    {
-        return collect($this->cartItems())->sum('subtotal');
+        return redirect()->route('my-orders.show', $order)
+            ->with('success', "Order {$order->number()} received. We will confirm it shortly.");
     }
 }

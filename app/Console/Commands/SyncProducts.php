@@ -2,76 +2,72 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\StockMovementType;
 use App\Models\Product;
+use App\Services\StockService;
 use Illuminate\Console\Command;
 
+/**
+ * Pulls products from the ERP export (storage/app/erp-products.json). The ERP
+ * is the source of truth for names, prices and stock; a stock difference is
+ * written as an "ERP sync" movement, so the history still adds up.
+ */
 class SyncProducts extends Command
 {
-    protected $signature = 'app:sync-products';
+    protected $signature = 'app:sync-products {--path= : JSON file to read instead of storage/app/erp-products.json}';
 
-    protected $description = 'Sinhronizuje proizvode iz spoljnog ERP sistema (JSON fajl)';
+    protected $description = 'Sync products from the ERP export';
 
-    public function handle(): int
+    public function handle(StockService $stock): int
     {
-        $path = storage_path('app/erp-products.json');
+        $path = $this->option('path') ?: storage_path('app/erp-products.json');
 
-        // Provera da fajl postoji (šta ako API/izvor ne radi)
         if (! file_exists($path)) {
-            $this->error('ERP izvor nije dostupan (fajl ne postoji): ' . $path);
+            $this->error("ERP export not found: {$path}");
+
             return self::FAILURE;
         }
 
-        $json = file_get_contents($path);
-        $data = json_decode($json, true);
-
-        // Provera da je JSON validan
+        $data = json_decode((string) file_get_contents($path), true);
         if (! is_array($data)) {
-            $this->error('ERP podaci nisu validni (neispravan JSON).');
+            $this->error('The ERP export is not valid JSON.');
+
             return self::FAILURE;
         }
 
-        $created = 0;
-        $updated = 0;
-        $skipped = 0;
+        $created = $updated = $skipped = 0;
 
         foreach ($data as $row) {
-            // Preskoči redove bez external_id (ne možemo ih pouzdano mapirati)
+            // Rows without external_id cannot be matched reliably.
             if (empty($row['external_id'])) {
                 $skipped++;
-                $this->warn('Preskočen red bez external_id.');
+                $this->warn('Skipped a row without external_id.');
+
                 continue;
             }
 
-            $product = Product::where('external_id', $row['external_id'])->first();
+            $product = Product::firstWhere('external_id', $row['external_id']);
+            $attributes = array_filter([
+                'sku' => $row['sku'] ?? null,
+                'name' => $row['name'] ?? null,
+                'category' => $row['category'] ?? null,
+                'price' => $row['price'] ?? null,
+            ], fn ($v) => $v !== null);
 
             if ($product) {
-                // Postoji — ažuriraj (ERP je izvor istine, prepiši polja)
-                $product->update([
-                    'sku' => $row['sku'] ?? $product->sku,
-                    'name' => $row['name'] ?? $product->name,
-                    'price' => $row['price'] ?? $product->price,
-                    'stock_quantity' => $row['stock_quantity'] ?? $product->stock_quantity,
-                ]);
+                $product->update($attributes);
                 $updated++;
             } else {
-                // Ne postoji — kreiraj novi
-                Product::create([
-                    'external_id' => $row['external_id'],
-                    'sku' => $row['sku'] ?? null,
-                    'name' => $row['name'] ?? 'Bez naziva',
-                    'price' => $row['price'] ?? 0,
-                    'stock_quantity' => $row['stock_quantity'] ?? 0,
-                    'is_active' => true,
-                ]);
+                $product = Product::create(['external_id' => $row['external_id'], 'name' => 'Unnamed', 'is_active' => true, ...$attributes]);
                 $created++;
+            }
+
+            if (isset($row['stock_quantity'])) {
+                $stock->correctTo($product, (int) $row['stock_quantity'], null, 'ERP sync', StockMovementType::Sync);
             }
         }
 
-        // Log rezultata
-        $this->info("Sinhronizacija završena.");
-        $this->info("Kreirano: {$created}");
-        $this->info("Ažurirano: {$updated}");
-        $this->info("Preskočeno: {$skipped}");
+        $this->info("Sync finished. Created: {$created}, updated: {$updated}, skipped: {$skipped}.");
 
         return self::SUCCESS;
     }

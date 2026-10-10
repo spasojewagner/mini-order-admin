@@ -1,0 +1,42 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl, mbstring, pdo_sqlite, sqlite3, zip
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
+
+      - name: Build the frontend
+        run: npm run build
+
+      - name: Prepare the app
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Code style
+        run: vendor/bin/pint --test
+
+      - name: Tests
+        run: php artisan test

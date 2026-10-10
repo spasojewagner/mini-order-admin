@@ -2,104 +2,94 @@
 
 namespace App\Filament\Resources\Conversations\RelationManagers;
 
+use App\Ai\Agents\ReplyDraftAgent;
+use App\Models\Conversation;
+use App\Models\Message;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Filament\Notifications\Notification;
+use Throwable;
 
 class MessagesRelationManager extends RelationManager
 {
     protected static string $relationship = 'messages';
 
+    protected static ?string $title = 'Messages';
+
     public function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Select::make('sender')
-                    ->label('Pošiljalac')
-                    ->options([
-                        'customer' => 'Kupac',
-                        'admin' => 'Admin',
-                    ])
-                    ->default('admin')
-                    ->required(),
-
-                Textarea::make('body')
-                    ->label('Poruka')
-                    ->required()
-                    ->rows(3)
-                    ->maxLength(2000),
-            ]);
+        return $schema->components([
+            ToggleButtons::make('sender')
+                ->options(['admin' => 'Us', 'customer' => 'Customer'])
+                ->default('admin')->inline()->required(),
+            Textarea::make('body')->label('Message')->required()->rows(5)->maxLength(2000)->columnSpanFull(),
+        ]);
     }
 
     public function table(Table $table): Table
     {
         return $table
             ->recordTitleAttribute('body')
+            ->defaultSort('created_at', 'asc')
+            ->modifyQueryUsing(fn ($query) => $query->with('user'))
             ->columns([
-                TextColumn::make('sender')
-                    ->label('Pošiljalac')
-                    ->badge()
-                    ->color(fn (string $state): string => $state === 'admin' ? 'info' : 'gray'),
-
-                TextColumn::make('body')
-                    ->label('Poruka')
-                    ->wrap()
-                    ->searchable(),
-
-                IconColumn::make('ai_generated')
-                    ->label('AI draft')
-                    ->boolean(),
-
-                TextColumn::make('created_at')
-                    ->label('Vreme')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable(),
+                TextColumn::make('sender')->label('From')->badge()
+                    ->formatStateUsing(fn (string $state, Message $record) => $state === 'customer' ? 'Customer' : ($record->user?->name ?? 'Us'))
+                    ->color(fn (string $state) => $state === 'admin' ? 'primary' : 'gray'),
+                TextColumn::make('body')->label('Message')->wrap(),
+                IconColumn::make('ai_generated')->label('AI draft')->boolean()
+                    ->trueIcon('heroicon-o-sparkles')->falseIcon('')->trueColor('warning')
+                    ->tooltip(fn (Message $record) => $record->ai_generated ? 'Written by AI: check it before sending' : null),
+                TextColumn::make('created_at')->label('Time')->dateTime('d.m.Y H:i'),
             ])
             ->headerActions([
-                // Dugme: generiši AI draft (statički za sad)
-                Action::make('generateDraft')
-                    ->label('Generate draft reply')
+                Action::make('draftReply')
+                    ->label('Draft reply with AI')
                     ->icon('heroicon-o-sparkles')
                     ->color('warning')
                     ->action(function () {
-                        // Statički draft odgovor (kasnije se ovde poziva pravi AI API)
-                        $draft = 'Hvala na poruci. Proverićemo i javiti Vam uskoro.';
+                        /** @var Conversation $conversation */
+                        $conversation = $this->getOwnerRecord();
 
-                        $this->getOwnerRecord()->messages()->create([
+                        try {
+                            $draft = trim((string) (new ReplyDraftAgent)->prompt(ReplyDraftAgent::promptFor($conversation)));
+                        } catch (Throwable $e) {
+                            report($e);
+                            Notification::make()->title('The AI draft failed')
+                                ->body(blank(config('ai.providers.groq.key')) ? 'GROQ_API_KEY is not set in .env.' : $e->getMessage())
+                                ->danger()->send();
+
+                            return;
+                        }
+
+                        $conversation->messages()->create([
                             'sender' => 'admin',
+                            'user_id' => auth()->id(),
                             'body' => $draft,
                             'ai_generated' => true,
                         ]);
+                        $conversation->touch();
 
-                        Notification::make()
-                            ->title('Draft odgovor je generisan')
-                            ->body('Predlog je dodat kao poruka. Pregledajte i izmenite pre slanja.')
-                            ->success()
-                            ->send();
+                        Notification::make()->title('Draft added')
+                            ->body('It uses this customer\'s orders. Read and edit it before you send it.')
+                            ->success()->send();
                     }),
-
-                CreateAction::make()
-                    ->label('Nova poruka'),
+                CreateAction::make()->label('Add message')
+                    ->mutateDataUsing(fn (array $data) => [...$data, 'user_id' => $data['sender'] === 'admin' ? auth()->id() : null])
+                    ->after(fn () => $this->getOwnerRecord()->touch()),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()->mutateDataUsing(fn (array $data) => [...$data, 'ai_generated' => false]),
                 DeleteAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
     }
 }

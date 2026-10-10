@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Cart;
+use App\Support\Settings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -29,13 +31,18 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user ? $user->only(['id', 'name', 'email', 'role', 'customer_id']) : null,
             ],
-            // Broj stavki u korpi — dostupno svim Inertia stranicama
-            'cartCount' => collect(session()->get('cart', []))->sum(),
+            'company' => [
+                'name' => Settings::get('company.name'),
+                'vat_rate' => Settings::int('invoice.vat_rate'),
+            ],
+            'cartCount' => Cart::count(),
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

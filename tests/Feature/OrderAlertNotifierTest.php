@@ -15,7 +15,7 @@ class OrderAlertNotifierTest extends TestCase
         parent::setUp();
 
         Cache::forget(OrderAlertNotifier::CACHE_KEY);
-        config(['mail.order_alert_recipient' => 'menadzer@test.com']);
+        config(['mail.order_alert_recipient' => 'manager@example.com']);
     }
 
     /**
@@ -24,65 +24,65 @@ class OrderAlertNotifierTest extends TestCase
     private function orders(): array
     {
         return [
-            ['id' => 2, 'customer' => 'Petar Petrovic', 'amount' => 39945.79],
-            ['id' => 8, 'customer' => 'Ana Anic', 'amount' => 1617.93],
+            ['id' => 2, 'customer' => 'Market Lipa d.o.o.', 'amount' => 39945.79],
+            ['id' => 8, 'customer' => 'Kafe Sunce', 'amount' => 1617.93],
         ];
     }
 
-    public function test_salje_mejl_kada_nije_skoro_slat(): void
+    public function test_sends_the_email_when_none_went_out_recently(): void
     {
         Mail::fake();
 
         $result = (new OrderAlertNotifier)->send(
-            'Prekoracen prag neobradjenih porudzbina',
-            'Ima 11 neobradjenih porudzbina, najstarije cekaju od jula.',
+            'Order backlog above the limit',
+            '11 open orders, the oldest waiting since Monday.',
             $this->orders(),
-            'Prvo resiti najstarije porudzbine.',
+            'Confirm the oldest orders first.',
         );
 
         Mail::assertSent(OrderAlertMail::class, 1);
-        $this->assertStringContainsString('poslat', $result);
+        $this->assertStringContainsString('Email sent to manager@example.com', $result);
     }
 
-    public function test_mejl_nosi_prosledjene_porudzbine(): void
+    public function test_the_email_carries_the_orders_it_was_given(): void
     {
         Mail::fake();
 
         (new OrderAlertNotifier)->send(
-            'Alarm',
-            'Sazetak.',
+            'Alert',
+            'Summary.',
             $this->orders(),
         );
 
         Mail::assertSent(OrderAlertMail::class, function (OrderAlertMail $mail) {
-            return $mail->subjectLine === 'Alarm'
+            return $mail->subjectLine === 'Alert'
                 && count($mail->orders) === 2
                 && $mail->orders[0]['id'] === 2
                 && $mail->recommendation === null;
         });
     }
 
-    public function test_ne_salje_drugi_put_u_istom_periodu(): void
+    public function test_does_not_send_twice_within_the_cooldown(): void
     {
         Mail::fake();
         $notifier = new OrderAlertNotifier;
 
-        $notifier->send('Alarm', 'Prvi put.', $this->orders());
-        $result = $notifier->send('Alarm', 'Drugi put.', $this->orders());
+        $notifier->send('Alert', 'First.', $this->orders());
+        $result = $notifier->send('Alert', 'Second.', $this->orders());
 
-        // Najvaznije: ukupno jedan mejl, ne dva.
+        // The point: one email in total, not two.
         Mail::assertSent(OrderAlertMail::class, 1);
-        $this->assertStringContainsString('vec poslat', $result);
+        $this->assertStringContainsString('already sent', $result);
     }
 
-    public function test_ne_salje_kada_primalac_nije_podesen(): void
+    public function test_does_not_send_without_a_recipient(): void
     {
         Mail::fake();
         config(['mail.order_alert_recipient' => null]);
 
-        $result = (new OrderAlertNotifier)->send('Alarm', 'Sazetak.', $this->orders());
+        $result = (new OrderAlertNotifier)->send('Alert', 'Summary.', $this->orders());
 
         Mail::assertNothingSent();
-        $this->assertStringContainsString('nije podesen', $result);
+        $this->assertStringContainsString('No recipient', $result);
     }
 }

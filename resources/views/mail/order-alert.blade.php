@@ -1,25 +1,25 @@
 <x-mail::message>
-# Neobrađene porudžbine
+# Order backlog
 
 {{ $summary }}
 
 <x-mail::table>
-| #  | Kupac            | Vrednost |
-|:---|:-----------------|---------:|
+| Order | Customer | Amount (RSD) |
+|:------|:---------|-------------:|
 @foreach ($orders as $order)
-| {{ $order['id'] }} | {{ $order['customer'] }} | {{ number_format((float) $order['amount'], 2, ',', '.') }} |
+| SO-{{ str_pad((string) $order['id'], 5, '0', STR_PAD_LEFT) }} | {{ $order['customer'] }} | {{ number_format((float) $order['amount'], 2, ',', '.') }} |
 @endforeach
 </x-mail::table>
 
 @if ($recommendation)
-**Preporuka:** {{ $recommendation }}
+**Recommendation:** {{ $recommendation }}
 @endif
 
 <x-mail::button :url="rtrim(config('app.url'), '/') . '/admin/orders'">
-Otvori porudžbine
+Open orders
 </x-mail::button>
 
 <x-mail::subcopy>
-Ovu poruku je sastavio automatski agent koji prati porudžbine.
+Written by the order monitor agent. Thresholds can be changed under Settings in the admin panel.
 </x-mail::subcopy>
 </x-mail::message>

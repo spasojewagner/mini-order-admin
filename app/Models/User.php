@@ -2,29 +2,21 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\Role;
 use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements FilamentUser
 {
-    // Ko sme da pristupi Filament admin panelu — samo interne role, ne kupci
-    public function canAccessPanel(Panel $panel): bool
-    {
-        return in_array($this->role, ['admin', 'sales', 'warehouse']);
-    }
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'email',
@@ -33,21 +25,11 @@ class User extends Authenticatable implements FilamentUser
         'customer_id',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -55,29 +37,51 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
         ];
     }
+
+    /** Only company staff use the back office; customers use the portal. */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->roleEnum()?->isStaff() ?? false;
+    }
+
+    public function roleEnum(): ?Role
+    {
+        return Role::tryFrom((string) $this->role);
+    }
+
+    public function hasRole(Role ...$roles): bool
+    {
+        return in_array($this->roleEnum(), $roles, true);
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->hasRole(Role::Admin);
     }
 
     public function isSales(): bool
     {
-        return $this->role === 'sales';
+        return $this->hasRole(Role::Sales);
     }
 
     public function isWarehouse(): bool
     {
-        return $this->role === 'warehouse';
-    }
-    
-    public function isCustomer(): bool
-    {
-        return $this->role === 'customer';
+        return $this->hasRole(Role::Warehouse);
     }
 
-    // Nalog kupca je povezan sa Customer zapisom (porudžbine idu na kupca, ne na nalog)
-    public function customer()
+    public function isCustomer(): bool
+    {
+        return $this->hasRole(Role::Customer);
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->roleEnum()?->isStaff() ?? false;
+    }
+
+    /** A portal account belongs to a customer; orders are placed for the customer. */
+    public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
-    }}
-    
+    }
+}

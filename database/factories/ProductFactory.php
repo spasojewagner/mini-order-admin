@@ -10,19 +10,16 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class ProductFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'name' => fake()->words(2, true),
-            'sku' => strtoupper(fake()->unique()->bothify('??####')),
+            'name' => ucfirst(fake()->words(2, true)),
+            'sku' => strtoupper(fake()->unique()->bothify('???-###')),
+            'category' => fake()->randomElement(['Beverages', 'Snacks', 'Dairy', 'Household']),
             'price' => fake()->randomFloat(2, 100, 5000),
-            'stock_quantity' => fake()->numberBetween(0, 100),
-            'is_active' => fake()->boolean(80),
+            'stock_quantity' => fake()->numberBetween(20, 100),
+            'reorder_level' => 10,
+            'is_active' => true,
         ];
     }
 }

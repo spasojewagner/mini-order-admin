@@ -1,12 +1,14 @@
 <?php
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
-use App\Observers\OrderItemObserver;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-#[ObservedBy([OrderItemObserver::class])]
 
+use App\Observers\OrderItemObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+#[ObservedBy([OrderItemObserver::class])]
 class OrderItem extends Model
 {
     use HasFactory;
@@ -20,19 +22,21 @@ class OrderItem extends Model
         'subtotal',
     ];
 
-    protected $casts = [
-        'unit_price' => 'decimal:2',
-        'subtotal' => 'decimal:2',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'unit_price' => 'decimal:2',
+            'subtotal' => 'decimal:2',
+            'quantity' => 'integer',
+        ];
+    }
 
-    // Stavka pripada jednoj porudžbini
-    public function order()
+    public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
-    // Stavka pokazuje na jedan proizvod
-    public function product()
+    public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }

@@ -2,112 +2,88 @@
 
 namespace App\Filament\Resources\Orders\Tables;
 
+use App\Enums\OrderStatus;
+use App\Filament\Resources\Orders\OrderActions;
+use App\Filament\Resources\Orders\OrderResource;
+use App\Models\Customer;
+use App\Models\Order;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Tables\Table;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\Filter;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Actions\Action;
-use App\Services\OrderConfirmationService;
-use App\Models\Order;
-use Filament\Notifications\Notification;
-use Illuminate\Validation\ValidationException;
+
 class OrdersTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('customer')->withCount('items'))
+            ->defaultSort('created_at', 'desc')
+            ->recordUrl(fn (Order $record) => OrderResource::getUrl('view', ['record' => $record]))
             ->columns([
-                TextColumn::make('id')
-                    ->label('#')
-                    ->sortable(),
-
-                TextColumn::make('customer.name')
-                    ->label('Kupac')
+                TextColumn::make('id')->label('Order')
+                    ->formatStateUsing(fn (Order $record) => $record->number())
+                    ->weight('semibold')
                     ->searchable()
                     ->sortable(),
-
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'draft' => 'gray',
-                        'new' => 'info',
-                        'confirmed' => 'success',
-                        'in_progress' => 'warning',
-                        'shipped' => 'success',
-                        'cancelled' => 'danger',
-                        default => 'gray',
-                    }),
-
-                TextColumn::make('total_amount')
-                    ->label('Ukupno')
-                    ->money('RSD')
+                TextColumn::make('customer.company_name')->label('Customer')
+                    ->formatStateUsing(fn (Order $record) => $record->customer?->displayName())
+                    ->description(fn (Order $record) => $record->customer?->company_name ? $record->customer->name : null)
+                    ->searchable(['company_name', 'name', 'tax_id']),
+                TextColumn::make('status')->badge()
+                    ->formatStateUsing(fn (OrderStatus $state) => $state->label())
+                    ->color(fn (OrderStatus $state) => $state->color())
+                    ->icon(fn (OrderStatus $state) => $state->icon())
                     ->sortable(),
-
-                TextColumn::make('created_at')
-                    ->label('Datum')
-                    ->date('d.m.Y')
-                    ->sortable(),
+                TextColumn::make('items_count')->label('Lines')->alignCenter()->color('gray'),
+                TextColumn::make('total_amount')->label('Total (net)')->money('RSD')->sortable()->alignEnd(),
+                TextColumn::make('source')->label('Channel')->badge()->color('gray')
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'portal' => 'Portal',
+                        'mcp' => 'AI (MCP)',
+                        default => 'Office',
+                    })
+                    ->toggleable(),
+                TextColumn::make('created_at')->label('Placed')->dateTime('d.m.Y H:i')->sortable()
+                    ->description(fn (Order $record) => $record->created_at->diffForHumans()),
+                TextColumn::make('invoice_number')->label('Invoice')->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('status')
-                    ->label('Status')
-                    ->options([
-                        'draft' => 'Draft',
-                        'new' => 'New',
-                        'confirmed' => 'Confirmed',
-                        'in_progress' => 'In progress',
-                        'shipped' => 'Shipped',
-                        'cancelled' => 'Cancelled',
-                    ]),
-
+                SelectFilter::make('status')->options(OrderStatus::options())->multiple(),
+                SelectFilter::make('source')->label('Channel')
+                    ->options(['admin' => 'Back office', 'portal' => 'Customer portal', 'mcp' => 'AI client (MCP)']),
+                SelectFilter::make('customer')->relationship('customer', 'name')
+                    ->getOptionLabelFromRecordUsing(fn (Customer $record) => $record->displayName())
+                    ->searchable()->preload(),
                 Filter::make('created_at')
                     ->schema([
-                        DatePicker::make('from')->label('Od'),
-                        DatePicker::make('until')->label('Do'),
+                        DatePicker::make('from')->label('Placed from'),
+                        DatePicker::make('until')->label('Placed until'),
                     ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when($data['from'] ?? null, fn($q, $date) => $q->whereDate('created_at', '>=', $date))
-                            ->when($data['until'] ?? null, fn($q, $date) => $q->whereDate('created_at', '<=', $date));
-                    }),
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['from'] ?? null, fn ($q, $date) => $q->whereDate('created_at', '>=', $date))
+                        ->when($data['until'] ?? null, fn ($q, $date) => $q->whereDate('created_at', '<=', $date))),
             ])
             ->recordActions([
-                Action::make('confirm')
-                    ->label('Potvrdi')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Potvrdi porudžbinu')
-                    ->modalDescription('Ovo će skinuti lager i promeniti status u confirmed.')
-                    ->visible(fn(Order $record): bool => in_array($record->status, ['draft', 'new']))
-                    ->action(function (Order $record) {
-                        try {
-                            app(OrderConfirmationService::class)->confirm($record);
-
-                            Notification::make()
-                                ->title('Porudžbina je potvrđena i lager je ažuriran.')
-                                ->success()
-                                ->send();
-                        } catch (ValidationException $e) {
-                            Notification::make()
-                                ->title('Greška pri potvrdi')
-                                ->body(collect($e->errors())->flatten()->first())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                EditAction::make(),
+                ActionGroup::make([
+                    ViewAction::make(),
+                    ...OrderActions::transitions(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->label('Delete drafts and cancelled')
+                        ->visible(fn () => auth()->user()?->isAdmin())
+                        ->using(fn ($records) => $records
+                            ->filter(fn (Order $o) => in_array($o->status, [OrderStatus::Draft, OrderStatus::Cancelled], true))
+                            ->each->delete()),
                 ]),
             ]);
     }

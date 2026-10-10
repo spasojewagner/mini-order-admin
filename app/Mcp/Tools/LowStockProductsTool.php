@@ -9,25 +9,27 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Vraca proizvode kojima je lager pao na ili ispod zadatog praga. Koristi kada korisnik pita sta treba naruciti ili cega ponestaje.')]
+#[Description('Lists active products at or below their reorder level (each product has its own), lowest first. Use it when someone asks what to reorder or what is running out.')]
 class LowStockProductsTool extends Tool
 {
     public function handle(Request $request): Response
     {
         $validated = $request->validate([
-            'threshold' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'threshold' => ['nullable', 'integer', 'min:0', 'max:100000'],
         ]);
 
-        $threshold = $validated['threshold'] ?? 10;
-
         $products = Product::query()
-            ->where('is_active', true)
-            ->where('stock_quantity', '<=', $threshold)
+            ->active()
+            ->when(
+                isset($validated['threshold']),
+                fn ($q) => $q->where('stock_quantity', '<=', $validated['threshold']),
+                fn ($q) => $q->lowStock(),
+            )
             ->orderBy('stock_quantity')
-            ->get(['id', 'sku', 'name', 'stock_quantity']);
+            ->get(['id', 'sku', 'name', 'category', 'stock_quantity', 'reorder_level']);
 
         if ($products->isEmpty()) {
-            return Response::text("Nema proizvoda sa lagerom na ili ispod {$threshold}.");
+            return Response::text('No product is at or below its reorder level.');
         }
 
         return Response::text($products->toJson());
@@ -37,8 +39,7 @@ class LowStockProductsTool extends Tool
     {
         return [
             'threshold' => $schema->integer()
-                ->description('Granica lagera. Podrazumevano 10.')
-                ->default(10),
+                ->description('Optional fixed limit instead of each product\'s own reorder level.'),
         ];
     }
 }

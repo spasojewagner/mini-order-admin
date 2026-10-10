@@ -11,48 +11,50 @@ class CustomerAccessTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_registracija_pravi_i_kupca_i_povezuje_ga_sa_nalogom(): void
+    public function test_signing_up_creates_a_customer_linked_to_the_account(): void
     {
         $this->post('/register', [
-            'name' => 'Test Kupac',
-            'email' => 'test.kupac@example.com',
-            'password' => 'lozinka123',
-            'password_confirmation' => 'lozinka123',
+            'name' => 'Jelena Marković',
+            'company_name' => 'Kafe Sunce',
+            'tax_id' => '101234567',
+            'email' => 'jelena@kafe-sunce.example',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
         ]);
 
-        // Napravljen je Customer zapis
         $this->assertDatabaseHas('customers', [
-            'email' => 'test.kupac@example.com',
-            'type' => 'individual',
+            'email' => 'jelena@kafe-sunce.example',
+            'type' => 'company',
+            'company_name' => 'Kafe Sunce',
+            'tax_id' => '101234567',
         ]);
 
-        // Nalog je povezan sa tim kupcem i ima rolu customer
-        $user = User::where('email', 'test.kupac@example.com')->first();
-        $this->assertNotNull($user->customer_id);
-        $this->assertEquals('customer', $user->role);
-        $this->assertEquals('Test Kupac', $user->customer->name);
+        $user = User::firstWhere('email', 'jelena@kafe-sunce.example');
+        $this->assertSame('customer', $user->role);
+        $this->assertSame('Kafe Sunce', $user->customer->company_name);
     }
 
-    public function test_kupac_ne_moze_da_pristupi_admin_panelu(): void
+    public function test_signing_up_without_a_company_creates_an_individual(): void
     {
-        $customer = Customer::factory()->create();
-        $user = User::factory()->create([
-            'role' => 'customer',
-            'customer_id' => $customer->id,
+        $this->post('/register', [
+            'name' => 'Petar Savić',
+            'email' => 'petar@mail.example',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
         ]);
 
-        $response = $this->actingAs($user)->get('/admin');
-
-        // Kupac nema pristup panelu (canAccessPanel ga odbija)
-        $response->assertForbidden();
+        $this->assertDatabaseHas('customers', ['email' => 'petar@mail.example', 'type' => 'individual']);
     }
 
-    public function test_admin_moze_da_pristupi_admin_panelu(): void
+    public function test_customers_cannot_open_the_back_office(): void
     {
-        $user = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create(['role' => 'customer', 'customer_id' => Customer::factory()->create()->id]);
 
-        $response = $this->actingAs($user)->get('/admin');
+        $this->actingAs($user)->get('/admin')->assertForbidden();
+    }
 
-        $response->assertSuccessful();
+    public function test_staff_can_open_the_back_office(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']))->get('/admin')->assertSuccessful();
     }
 }

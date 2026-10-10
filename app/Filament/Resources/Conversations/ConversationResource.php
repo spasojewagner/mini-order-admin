@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Conversations;
 use App\Filament\Resources\Conversations\Pages\CreateConversation;
 use App\Filament\Resources\Conversations\Pages\EditConversation;
 use App\Filament\Resources\Conversations\Pages\ListConversations;
+use App\Filament\Resources\Conversations\RelationManagers\MessagesRelationManager;
 use App\Filament\Resources\Conversations\Schemas\ConversationForm;
 use App\Filament\Resources\Conversations\Tables\ConversationsTable;
 use App\Models\Conversation;
@@ -13,15 +14,28 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use App\Filament\Resources\Conversations\RelationManagers;
+use UnitEnum;
 
 class ConversationResource extends Resource
 {
     protected static ?string $model = Conversation::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Sales';
+
+    protected static ?int $navigationSort = 3;
+
+    protected static ?string $navigationLabel = 'Inbox';
 
     protected static ?string $recordTitleAttribute = 'subject';
+
+    public static function getNavigationBadge(): ?string
+    {
+        $open = Conversation::query()->where('status', 'open')->count();
+
+        return $open ? (string) $open : null;
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -36,7 +50,7 @@ class ConversationResource extends Resource
     public static function getRelations(): array
     {
         return [
-            RelationManagers\MessagesRelationManager::class,
+            MessagesRelationManager::class,
         ];
     }
 

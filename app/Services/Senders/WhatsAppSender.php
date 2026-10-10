@@ -16,7 +16,7 @@ class WhatsAppSender implements MessageSender
 
         if (blank($token) || blank($phoneNumberId)) {
             throw new RuntimeException(
-                'WhatsApp nije podesen (WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID).'
+                'WhatsApp is not configured (WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID).'
             );
         }
 
@@ -30,7 +30,7 @@ class WhatsAppSender implements MessageSender
             ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('WhatsApp je odbio poruku: '.$response->body());
+            throw new RuntimeException('WhatsApp rejected the message: '.$response->body());
         }
     }
 }

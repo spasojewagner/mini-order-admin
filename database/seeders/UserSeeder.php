@@ -4,38 +4,27 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
+/** Staff demo logins, one per role. Password for all: "password". The portal login is made by DemoDataSeeder. */
 class UserSeeder extends Seeder
 {
+    public const PASSWORD = 'password';
+
     public function run(): void
     {
-        // Test nalozi za sve tri role (koriste se za prijavu na /admin)
-        User::updateOrCreate(
-            ['email' => 'admin@test.com'],
-            [
-                'name' => 'Admin',
-                'password' => Hash::make('admin123'),
-                'role' => 'admin',
-            ]
-        );
+        $staff = [
+            ['email' => 'admin@demo.test', 'name' => 'Ana Petrović', 'role' => 'admin'],
+            ['email' => 'sales@demo.test', 'name' => 'Marko Jovanović', 'role' => 'sales'],
+            ['email' => 'warehouse@demo.test', 'name' => 'Nikola Ilić', 'role' => 'warehouse'],
+        ];
 
-        User::updateOrCreate(
-            ['email' => 'sales@test.com'],
-            [
-                'name' => 'Sales',
-                'password' => Hash::make('sales123'),
-                'role' => 'sales',
-            ]
-        );
-
-        User::updateOrCreate(
-            ['email' => 'warehouse@test.com'],
-            [
-                'name' => 'Warehouse',
-                'password' => Hash::make('warehouse123'),
-                'role' => 'warehouse',
-            ]
-        );
+        foreach ($staff as $user) {
+            User::updateOrCreate(['email' => $user['email']], [
+                'name' => $user['name'],
+                'role' => $user['role'],
+                'password' => self::PASSWORD,
+                'email_verified_at' => now(),
+            ]);
+        }
     }
 }

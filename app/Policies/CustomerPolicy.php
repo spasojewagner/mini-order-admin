@@ -2,12 +2,11 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Customer;
+use App\Models\User;
 
 class CustomerPolicy
 {
-    // Svi ulogovani vide listu i pojedinačni zapis
     public function viewAny(User $user): bool
     {
         return $user->isAdmin() || $user->isSales();
@@ -15,7 +14,8 @@ class CustomerPolicy
 
     public function view(User $user, Customer $customer): bool
     {
-        return $user->isAdmin() || $user->isSales();
+        // The warehouse opens customers from an order to see the delivery address.
+        return $user->isStaff();
     }
 
     public function create(User $user): bool
@@ -30,11 +30,11 @@ class CustomerPolicy
 
     public function delete(User $user, Customer $customer): bool
     {
-        return $user->isAdmin();
+        return $user->isAdmin() && ! $customer->orders()->exists();
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdmin();
+        return false;
     }
 }

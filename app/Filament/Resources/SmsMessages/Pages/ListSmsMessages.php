@@ -9,7 +9,7 @@ class ListSmsMessages extends ListRecords
 {
     protected static string $resource = SmsMessageResource::class;
 
-    // Bez CreateAction: poruke pravi samo agent kroz SmsDraftService.
+    // No create button: drafts come only from the AI agent through SmsDraftService.
     protected function getHeaderActions(): array
     {
         return [];

@@ -19,12 +19,12 @@ class SmsApprovalServiceTest extends TestCase
     {
         return SmsMessage::create([
             'phone' => '+381601234567',
-            'body' => 'Hitno: 30 neobradjenih.',
+            'body' => 'Urgent: 30 open orders.',
             'status' => 'pending',
         ]);
     }
 
-    public function test_odobravanje_salje_poruku_i_belezi_ko_je_odobrio(): void
+    public function test_approving_sends_and_records_who_approved(): void
     {
         $sent = [];
         $sender = new class($sent) implements MessageSender
@@ -48,13 +48,13 @@ class SmsApprovalServiceTest extends TestCase
         $this->assertNotNull($sms->fresh()->sent_at);
     }
 
-    public function test_odbijanje_ne_salje_nista(): void
+    public function test_rejecting_sends_nothing(): void
     {
         $sender = new class implements MessageSender
         {
             public function send(string $recipient, string $body): void
             {
-                throw new RuntimeException('Ne sme da se posalje kod odbijanja.');
+                throw new RuntimeException('Must not be sent when rejected.');
             }
         };
 
@@ -67,7 +67,7 @@ class SmsApprovalServiceTest extends TestCase
         $this->assertNull($sms->fresh()->sent_at);
     }
 
-    public function test_ne_moze_dvaput_da_se_odobri(): void
+    public function test_cannot_be_approved_twice(): void
     {
         $sender = new class implements MessageSender
         {
@@ -89,13 +89,13 @@ class SmsApprovalServiceTest extends TestCase
         $service->approve($sms->fresh(), $user);
     }
 
-    public function test_status_ostaje_pending_ako_slanje_pukne(): void
+    public function test_stays_pending_when_sending_fails(): void
     {
         $sender = new class implements MessageSender
         {
             public function send(string $recipient, string $body): void
             {
-                throw new RuntimeException('Gateway nedostupan.');
+                throw new RuntimeException('Gateway unavailable.');
             }
         };
 
@@ -105,10 +105,10 @@ class SmsApprovalServiceTest extends TestCase
         try {
             (new SmsApprovalService($sender))->approve($sms, $user);
         } catch (RuntimeException) {
-            // ocekivano
+            // expected
         }
 
-        // Najvaznije: poruka nije oznacena kao poslata, moze da se pokusa ponovo.
+        // The point: not marked as sent, so it can be tried again.
         $this->assertSame('pending', $sms->fresh()->status);
         $this->assertNull($sms->fresh()->sent_at);
     }
